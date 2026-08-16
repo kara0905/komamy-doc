@@ -16,7 +16,19 @@
           "index",
           "quickstart"
         ]
-      }
+      },
+      {
+        "group": "Getting Started",
+        "pages": [
+          "index",
+          "quickstart"
+        ]
+      },
+      {
+        "group": "Développeurs",
+        "pages": []
+      },
+      "comment-fonctionne-l-api-ce-document-explique-les-principes-de-l-api-comments-authentifier-quelles-conventions-suivre-pour-la-liste-exhaustive-des-routes-methode-acces-corps-de-requete-reponse-voi"
     ]
   },
   "navbar": {
