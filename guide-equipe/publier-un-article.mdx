@@ -1,0 +1,65 @@
+---
+title: "Publier un article"
+description: "Rédiger une annonce éditoriale ou une entrée de changelog"
+---
+
+Les articles (« Annonces ») sont l'espace éditorial du site — utilisés par exemple pour annoncer la sortie d'un chapitre, un événement, ou toute actualité du site. Rédaction en Markdown, avec image de couverture et tags.
+
+<Info>
+  **Qui peut faire ça ?** `admin` et `modérateur` uniquement — voir [Rôles et permissions](/guide-equipe/roles-et-permissions). C'est la différence principale avec le [blog communautaire](/guide-lecteur/commentaires-et-communaute#blog-communautaire), ouvert à tout utilisateur connecté.
+</Info>
+
+<Steps>
+  <Step title="Ouvrir la liste des articles">
+    Depuis l'administration (`/admin`), ouvrez l'onglet **Articles**. La liste montre tous les articles existants, publiés ou brouillons, avec leur auteur et leur statut.
+
+    <Frame>
+      <img src="/images/guides/guide-article-01-liste.png" alt="Liste des articles dans l'administration" />
+    </Frame>
+
+    Cliquez sur **Ajouter** en haut à droite pour créer un nouvel article.
+
+    <Note>
+      C'est le seul moyen de créer un article — il n'y a volontairement pas de lien de création dans la barre latérale : tout passe par l'onglet Articles de l'administration.
+    </Note>
+  </Step>
+  <Step title="Remplir l'article">
+    <Frame>
+      <img src="/images/guides/guide-article-02-vide.png" alt="Éditeur d'article vide" />
+    </Frame>
+
+    | Champ | Détail |
+    | --- | --- |
+    | **Titre** | Devient automatiquement le slug (URL) tant que vous ne modifiez pas ce dernier manuellement. |
+    | **Contenu** | Markdown standard — gras, listes, liens... Un onglet **Aperçu** permet de vérifier le rendu avant publication. |
+    | **Type** | Annonce classique, ou **Changelog** (entrée de changelog structuré, avec un champ **Version** affiché en plus). |
+    | **Statut** | Brouillon (invisible du public) ou Publié — ou publication programmée à une date donnée. |
+    | **URL (slug)** | Pré-rempli depuis le titre, modifiable. |
+    | **Résumé** | Affiché dans les listes et cartes d'articles. |
+    | **Image de couverture** | Une URL d'image (pas d'upload de fichier pour les articles — collez un lien direct vers l'image). |
+    | **Tags** | Tapez puis Entrée pour ajouter un tag ; les suggestions existantes apparaissent au fur et à mesure. |
+
+    <Frame>
+      <img src="/images/guides/guide-article-03-rempli.png" alt="Formulaire d'article rempli, prêt à publier" />
+    </Frame>
+  </Step>
+  <Step title="Publier">
+    Une fois le statut sur **Publié** et les champs remplis, cliquez sur **Créer l'article**. Vous êtes redirigé·e vers la page publique de l'article.
+
+    <Frame>
+      <img src="/images/guides/guide-article-04-publie.png" alt="Article publié, tel que vu par les visiteurs" />
+    </Frame>
+
+    Le bouton **Modifier** en haut de la page publique ramène directement à l'éditeur pour ce même article (accessible uniquement à `admin`/`modérateur`).
+  </Step>
+</Steps>
+
+## Actions groupées
+
+Depuis la liste des articles, sélectionnez plusieurs articles pour changer leur statut en une fois (`admin`/`modérateur`), ou les supprimer en groupe (`admin` uniquement).
+
+## Notes
+
+- Passer un article publié en Brouillon ne le supprime pas : il redevient simplement invisible du public.
+- Seul `admin` peut **supprimer** un article — `modérateur` peut créer/éditer mais pas supprimer.
+- Le type **Changelog** partage la même table et le même éditeur que les annonces classiques — seul le champ **Version** a un effet d'affichage spécifique.

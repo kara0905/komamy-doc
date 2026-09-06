@@ -1,0 +1,506 @@
+---
+title: "Référence API"
+description: "Détail route par route, organisé par domaine"
+---
+
+<Note>
+  Ceci est une référence condensée. Pour l'exploration interactive (essayer une requête, voir le schéma complet de chaque forme), utilisez `GET /api/docs` (Swagger UI) sur votre instance — généré à la volée depuis les routes annotées, jamais un fichier séparé à maintenir à la main. Conventions générales (auth, erreurs, rate limiting, uploads) : voir [API — Vue d'ensemble](/developpeurs/api-overview).
+</Note>
+
+<AccordionGroup>
+
+<Accordion title="/auth — Authentification & comptes" icon="key">
+
+| Méthode | Route | Accès | Description |
+| --- | --- | --- | --- |
+| POST | `/auth/register` | Public | Crée un compte (`lecteur`). Body : `{ username, password }` (username 3-32 `[a-zA-Z0-9_-]`, password ≥ 8, rejeté si compromis — voir [Vue d'ensemble](/developpeurs/api-overview#mot-de-passe)). |
+| POST | `/auth/login` | Public | Connexion. Body : `{ username, password }`. Pose le cookie de session, ou `{ requiresTotp: true }` si la 2FA est activée. |
+| POST | `/auth/totp/login-verify` | Public | Étape 2 après un login mot de passe avec 2FA. Body : `{ code }`. Consomme le cookie temporaire posé par `/auth/login`. Pose le cookie de session. |
+| POST | `/auth/logout` | Public | Révoque la session courante et supprime le cookie. Idempotent. |
+| GET | `/auth/me` | Connecté | Profil de l'utilisateur courant. |
+| POST | `/auth/avatar` | Connecté | Upload d'avatar. `multipart/form-data`, champ `avatar`. |
+| POST | `/auth/banner` | Connecté | Upload de bannière de profil. `multipart/form-data`, champ `banner`. |
+| POST | `/auth/change-password` | Connecté | Body : `{ currentPassword, newPassword }` (newPassword ≥ 8). Révoque toutes les autres sessions. |
+| POST | `/auth/change-username` | Connecté | Body : `{ newUsername, password }`. Ré-émet le cookie de session avec le nouveau pseudo. |
+
+**`PublicUser`** : `{ id, username, role, status, avatarUrl, bannerImageUrl, bio, createdAt, lastLoginAt }`.
+
+### `/auth/totp` — 2FA
+
+| Méthode | Route | Accès | Description |
+| --- | --- | --- | --- |
+| GET | `/auth/totp` | Connecté | Statut de la 2FA. |
+| POST | `/auth/totp/setup` | Connecté | Confirmé par le mot de passe. Génère un secret (pas encore actif), porté par un cookie signé 5 min. Réponse : `{ secret, otpauthUrl, qrCodeDataUrl }`. |
+| POST | `/auth/totp/confirm` | Connecté | Body : `{ code }`. Consomme le cookie posé par `/setup` et active la 2FA. |
+| DELETE | `/auth/totp` | Connecté | Confirmé par le mot de passe. Désactive la 2FA. |
+
+### `/auth/sessions` — appareils connectés
+
+| Méthode | Route | Accès | Description |
+| --- | --- | --- | --- |
+| GET | `/auth/sessions` | Connecté | `{ sessions: PublicSession[] }`. La session ayant servi à la requête porte `current: true`. |
+| DELETE | `/auth/sessions/:id` | Connecté | Révoque une session précise. 404 si elle n'appartient pas à l'appelant. |
+| POST | `/auth/sessions/revoke-others` | Connecté | Révoque toutes les sessions sauf la courante. |
+
+### `/auth/recovery` — récupération sans e-mail
+
+| Méthode | Route | Accès | Description |
+| --- | --- | --- | --- |
+| POST | `/auth/recovery/redeem` | Public, rate-limité | Body : `{ username, code, newPassword }`. Échange un code contre un nouveau mot de passe. |
+| GET | `/auth/recovery` | Connecté | `{ remaining }` — nombre de codes non utilisés restants. |
+| POST | `/auth/recovery` | Connecté | Confirmé par le mot de passe. Régénère un lot de 10 codes (invalide l'ancien). Réponse : `{ codes: string[] }`, affichés **une seule fois**. |
+
+### `/auth/passkeys`
+
+| Méthode | Route | Accès | Description |
+| --- | --- | --- | --- |
+| GET | `/auth/passkeys` | Connecté | `{ passkeys: PublicPasskey[] }`. |
+| POST | `/auth/passkeys/register-options` | Connecté | Options WebAuthn pour `navigator.credentials.create()`, challenge dans un cookie httpOnly 5 min. |
+| POST | `/auth/passkeys/register-verify` | Connecté | Body : `{ response, name? }`. Réponse : `{ passkey: PublicPasskey }`. |
+| POST | `/auth/passkeys/login-options` | Public | Options WebAuthn (flux discoverable, pas de `allowCredentials`). |
+| POST | `/auth/passkeys/login-verify` | Public | Body : `{ response }`. Pose le cookie de session comme `/auth/login`. |
+| PUT | `/auth/passkeys/:id` | Connecté | Renomme. Body : `{ name }`. |
+| DELETE | `/auth/passkeys/:id` | Connecté | Supprime. |
+
+`PublicPasskey` : `{ id, name, deviceType, backedUp, createdAt, lastUsedAt }`.
+
+</Accordion>
+
+<Accordion title="/users, /me — Profils & compte personnel" icon="user">
+
+| Méthode | Route | Accès | Description |
+| --- | --- | --- | --- |
+| GET | `/users/:id` | Public | `{ user, comments, favorites, achievements, teams, collections }`. |
+| GET | `/users/me` | Connecté | Alias léger de `/auth/me`. |
+| PUT | `/users/me` | Connecté | Body : `{ bio?: string \| null }` (max 2000 car.). |
+| GET | `/users/search` | Connecté, rate-limité | Query `q`. Max 8 résultats, utilisateur courant exclu. |
+
+`achievements` (`PublicAchievementsSummary`) : badges débloqués/à débloquer, `unlockedCount`/`totalCount`, `stats` bruts, `level` (niveau/XP/palier, cosmétique), `streak` (série de lecture + calendrier). **Calculé à la volée**, aucune table `achievements`.
+
+### `/me` (toutes les routes nécessitent d'être connecté)
+
+| Méthode | Route | Description |
+| --- | --- | --- |
+| GET | `/me/favorites` | Projets favoris. |
+| GET | `/me/comments` | Commentaires postés (projets). |
+| GET | `/me/tickets` | Signalements créés. |
+| GET | `/me/continue-reading` | Chapitre en cours ou suivant par série. Query `limit` (déf. 10). |
+| GET | `/me/history` | Historique paginé (chapitres terminés). Query `page`, `pageSize` (déf. 20, max 50). |
+| GET | `/me/preferences` | `{ preferences: PublicUserPreferences }`. |
+| PUT | `/me/preferences` | Tous champs optionnels : `readerMode`, `readerWidth` (320-4000), `readerPageSpacing`, `theme`, `explicitContent`, `notificationSettings`. |
+| GET | `/me/notifications` | Query `limit` (déf. 30). |
+| GET | `/me/notifications/unread-count` | `{ count }`. |
+| POST | `/me/notifications/:id/read` | Marque comme lue. |
+| POST | `/me/notifications/read-all` | Marque tout comme lu. |
+| GET | `/me/export-data` | Export RGPD complet en JSON. |
+| DELETE | `/me/account` | Body : `{ password }`. Refusée si unique propriétaire d'une équipe. 5 tentatives/15 min. |
+
+`readerMode` ∈ `VERTICAL \| PAGINATED \| PAGINATED_DOUBLE`. `readerPageSpacing` ∈ `NONE \| NORMAL \| LARGE`. `theme` ∈ `light \| dark \| sepia \| midnight`. `notificationSettings` : objet clairsemé `Partial<Record<NotificationType, boolean>>` — l'absence d'une clé (ou `true`) vaut activé.
+
+**Types de notification** : `NEW_CHAPTER`, `COMMENT_REPLY`, `MESSAGE_RECEIVED`, `TICKET_UPDATE`, `NEW_TEAM_PROJECT`, `NEW_AUTHOR_PROJECT`, `NEW_BLOG_POST`.
+
+</Accordion>
+
+<Accordion title="/articles — Annonces" icon="newspaper">
+
+Middleware global sur tout `GET` : les articles `draft` dont `scheduledPublishAt` est échu basculent d'abord en `published` (pas de job planifié séparé — la promotion a lieu au prochain `GET`).
+
+| Méthode | Route | Accès | Description |
+| --- | --- | --- | --- |
+| GET | `/articles` | Public / connecté | Query : `status`, `type` (`news\|changelog`), `tag`, `search`, `page` (10/page). |
+| GET | `/articles/:id` | admin/modérateur | Récupération par id. |
+| GET | `/articles/:slug` | Public / connecté | Détail. 404 si non publié et non modérateur. |
+| POST | `/articles` | admin/modérateur | Body : `{ title, slug, excerpt?, content?, coverImageUrl?, status?, articleType?, version?, scheduledPublishAt?, tags?, images? }`. |
+| PUT | `/articles/:id` | admin/modérateur | Mise à jour partielle. |
+| DELETE | `/articles/:id` | admin | Suppression. |
+| POST | `/articles/bulk/status` | admin/modérateur | Body : `{ ids: number[], status }`. |
+| POST | `/articles/bulk/delete` | admin | Body : `{ ids: number[] }`. |
+| GET | `/articles/:slug/comments` | Public / connecté | `{ comments: PublicArticleComment[] }`. |
+| POST | `/articles/:slug/comments` | Connecté, rate-limité | Body : `{ content, parentCommentId? }`. |
+| PUT | `/articles/:slug/comments/:commentId` | Connecté (auteur) | Body : `{ content }`. |
+| POST | `/articles/:slug/comments/:commentId/like` | Connecté | Toggle like. |
+| DELETE | `/articles/:slug/comments/:commentId` | Connecté (auteur ou staff) | Suppression réversible. |
+
+`Article` : `{ id, slug, title, excerpt, content, coverImageUrl, status, articleType, version, scheduledPublishAt, tags, authorId, authorName, createdAt, updatedAt, publishedAt }`.
+
+</Accordion>
+
+<Accordion title="/tags, /search, /stats, /home-layout" icon="tag">
+
+### `/tags`
+
+| Méthode | Route | Accès | Description |
+| --- | --- | --- | --- |
+| GET | `/tags` | Public | `{ tags: PublicTagRef[] }`. |
+| GET | `/tags/:tag` | Public | `{ tag, color, articles, webcomics }` (publiés uniquement). |
+
+Catégories : `GENRE \| TROPE \| DEMOGRAPHIC \| FORMAT \| CONTENT_WARNING`.
+
+### `/search`
+
+| Méthode | Route | Accès | Description |
+| --- | --- | --- | --- |
+| GET | `/search` | Public, rate-limité | Query `q`. `{ projects, authors, teams, users, tags }`. |
+| GET | `/search/suggest` | Public, rate-limité | Query `q` (min 2 car.). Max 8, exclut les utilisateurs. |
+
+### `/stats`, `/site-settings`, `/home-layout`
+
+| Méthode | Route | Accès | Description |
+| --- | --- | --- | --- |
+| GET | `/stats` | Public | `{ stats: { projectCount, chapterCount, userCount, likeCount } }`. |
+| GET | `/site-settings` | Public | `{ discordUrl }`. |
+| GET | `/home-layout` | Public | `{ layout: HomeWidget[] }` (grille 12 colonnes). |
+
+Types de widget : `latest-releases`, `most-liked`, `recent-comments`, `catalog`, `announcements`, `tag`, `author`, `team-spotlight`, `stats`, `social-links`, `custom-banner`.
+
+</Accordion>
+
+<Accordion title="/projects — Webcomics & chapitres" icon="book-open">
+
+Middleware global sur tout `GET` : les chapitres `DRAFT` dont `scheduledPublishAt` est échu basculent en `PUBLISHED`.
+
+### Lecture
+
+| Méthode | Route | Accès | Description |
+| --- | --- | --- | --- |
+| GET | `/projects` | Public / connecté | Query : `status`, `tag` (`featured`), `authorId`, `search`, `sortBy`, `seriesStatus`, `page`, `pageSize`. |
+| GET | `/projects/latest-chapters` | Public | Query `limit` (déf. 10). |
+| GET | `/projects/most-liked` | Public | Query `limit`. |
+| GET | `/projects/recent-comments` | Public | Query `limit`. |
+| GET | `/projects/:slug` | Public / connecté | `{ project, chapters, readingProgress, likedChapterIds, myRating }`. `project.canManage` si connecté. |
+| POST | `/projects/:slug/view` | Public | Incrémente les vues de la fiche (dédupliqué 24h/visiteur). |
+| GET | `/projects/:slug/related` | Public / connecté | Query `limit` (max 12, déf. 6). |
+| GET | `/projects/:slug/most-liked-chapters` | Public / connecté | Query `limit`. |
+| GET | `/projects/:slug/comments` | Public / connecté | Fil en arbre (racine + réponses). |
+| GET | `/projects/:slug/chapters/:chapterSlug` | Public / connecté | `{ chapter, prevChapter, nextChapter, allChapters, progress, liked, downloadsEnabled }`. |
+| GET | `/projects/:slug/chapters/:chapterSlug/comments` | Public / connecté | Fil propre au chapitre. |
+| GET | `/projects/:slug/download/:format` | Public / connecté | `:format = cbz`. 403 si `downloadsEnabled=false`. Réponse binaire. |
+| GET | `/projects/:slug/chapters/:chapterSlug/download/:format` | Public / connecté | Télécharge un seul chapitre. |
+
+### Écriture
+
+| Méthode | Route | Accès | Description |
+| --- | --- | --- | --- |
+| POST | `/projects/:slug/favorite` | Connecté | Toggle. `{ liked }`. |
+| POST | `/projects/:slug/rating` | Connecté | Body : `{ rating: 1-5 }`. |
+| DELETE | `/projects/:slug/rating` | Connecté | Retire sa note. |
+| POST | `/projects/:slug/chapters/:chapterSlug/like` | Connecté | Toggle. `{ liked, likeCount }`. |
+| POST | `/projects/:slug/chapters/:chapterSlug/read` | Connecté | Toggle lu/non lu. |
+| POST | `/projects/:slug/chapters/read-bulk` | Connecté | Body : `{ chapterIds: number[], read: boolean }` (500 max). |
+| POST | `/projects/:slug/chapters/:chapterSlug/view` | Public | Incrémente les vues du chapitre. |
+| POST | `/projects/:slug/chapters/:chapterSlug/progress` | Connecté | Body : `{ percent, pageNumber }`. |
+| POST | `/projects/:slug/comments` | Connecté, rate-limité | Body : `{ content, parentCommentId? }`. |
+| POST | `/projects/:slug/chapters/:chapterSlug/comments` | Connecté, rate-limité | Fil propre au chapitre. |
+| PUT | `/projects/:slug/comments/:commentId` | Connecté | Body : `{ content }`. |
+| POST | `/projects/:slug/comments/:commentId/like` | Connecté | Toggle. |
+| DELETE | `/projects/:slug/comments/:commentId` | Connecté | Auteur ou staff. |
+| POST | `/projects/:slug/tickets` | Connecté, rate-limité | Body : `{ title, description, priority?, commentId? }`. Ouvre un canal `SUPPORT`. |
+
+`PublicWebcomicProject` inclut notamment `authors`/`teams` (listes complètes de crédits) en plus des champs historiques `authorName`/`team` (premier crédit), `status` (dérivé de `visibility`), `seriesStatus`, `viewCount`, `averageRating`/`ratingCount`, `downloadsEnabled`, `canManage` (connecté uniquement). `PublicWebcomicChapter` inclut `publisherTeam` (crédit principal) et `teams` (crédits additionnels).
+
+**Téléchargements CBZ** : générés à la demande, en mémoire (rien en cache disque). Plafond de `MAX_DOWNLOAD_PAGES` (3000) pour le téléchargement de série entière.
+
+**Mentions et mise en forme des commentaires** : `**gras**`, `*italique*`, `~~barré~~`, `` `code` ``, mentions `@[type:identifiant:libellé]` (`type` ∈ `user\|project\|author\|team`).
+
+</Accordion>
+
+<Accordion title="/authors, /teams" icon="users">
+
+| Méthode | Route | Accès | Description |
+| --- | --- | --- | --- |
+| GET | `/authors` | Public | `{ authors: [{ author, projectCount }] }`. |
+| GET | `/authors/:slug` | Public / connecté | `{ author (+followerCount, isFollowing), projects }`. |
+| POST | `/authors/:slug/follow` | Connecté | Toggle — notifications `NEW_AUTHOR_PROJECT`. |
+| GET | `/teams` | Public | `{ teams: [{ team, projectCount }] }`. |
+| GET | `/teams/:slug` | Public / connecté | `{ team (+members, followerCount, isFollowing), projects }`. |
+| POST | `/teams/:slug/follow` | Connecté | Toggle — notifications `NEW_TEAM_PROJECT`. |
+| GET | `/teams/:slug/achievements` | Public | Succès d'équipe, calculés à la volée. |
+| GET | `/teams/:slug/stats` | Connecté, membres + staff | **Pas public.** Vues/likes/favoris agrégés, top chapitres. |
+| GET | `/teams/:slug/feed` | Public | `{ posts: PublicTeamPost[] }`. |
+| POST | `/teams/:slug/feed` | Connecté, membre/staff, rate-limité | `ANNOUNCEMENT` ou `POLL` (2-10 options). |
+| DELETE | `/teams/:slug/feed/:postId` | Connecté, auteur/membre/staff | Cascade. |
+| POST | `/teams/:slug/feed/:postId/vote` | Connecté (pas réservé aux membres) | Body : `{ optionId }`. Remplace le vote précédent. |
+| POST | `/teams/:slug/feed/:postId/react` | Connecté (pas réservé aux membres) | Toggle ♥. |
+| GET | `/teams/:slug/agenda` | Public | `{ entries: PublicTeamAgendaEntry[] }`. |
+| POST | `/teams/:slug/agenda` | Connecté, membre/staff, rate-limité | Body : `{ title, description?, projectId?, releaseDate }`. |
+| PUT / DELETE | `/teams/:slug/agenda/:entryId` | Connecté, membre/staff | Mise à jour / suppression. |
+
+</Accordion>
+
+<Accordion title="/collections" icon="folder">
+
+| Méthode | Route | Accès | Description |
+| --- | --- | --- | --- |
+| GET | `/collections/mine` | Connecté | Query `projectId?` → `containsProject` par collection. |
+| POST | `/collections` | Connecté | Body : `{ name, description?, isPublic? }`. |
+| GET | `/collections/:id` | Public (privée : propriétaire/staff) | `{ collection: PublicCollectionDetail }`. |
+| PUT | `/collections/:id` | Connecté, propriétaire | Mise à jour partielle. |
+| DELETE | `/collections/:id` | Connecté, propriétaire | Suppression. |
+| POST | `/collections/:id/items` | Connecté, propriétaire | Body : `{ projectId }`. |
+| DELETE | `/collections/:id/items/:projectId` | Connecté, propriétaire | Retire un projet. |
+
+</Accordion>
+
+<Accordion title="/community — Blog communautaire" icon="pen-tool">
+
+| Méthode | Route | Accès | Description |
+| --- | --- | --- | --- |
+| GET | `/community/posts` | Public / connecté | Query `page`, `pageSize`, `category?`, `tag?`, `authorId?`. Posts suivis en tête. |
+| POST | `/community/posts` | Connecté, rate-limité | Body : `{ title, category?, content, coverImageUrl?, tags? }` (10 tags max). |
+| GET | `/community/posts/:id` | Public / connecté | 404 si masqué/supprimé (sauf auteur/staff). |
+| DELETE | `/community/posts/:id` | Connecté, auteur/staff | Soft delete. |
+| POST | `/community/posts/:id/react` | Connecté | Toggle ♥. |
+| GET | `/community/posts/:id/comments` | Public / connecté | Fil en arbre. |
+| POST | `/community/posts/:id/comments` | Connecté, rate-limité | `parentCommentId?`. |
+| PUT | `/community/comments/:id` | Connecté, auteur | Conserve l'historique. |
+| DELETE | `/community/comments/:id` | Connecté, auteur/staff | Soft delete. |
+| POST | `/community/comments/:id/like` | Connecté | Toggle. |
+| POST | `/community/authors/:userId/follow` | Connecté | Toggle. 400 si soi-même. |
+
+`/admin/blog` (admin/modérateur) : même forme que `/admin/comments` ci-dessous.
+
+</Accordion>
+
+<Accordion title="/tickets — Support" icon="life-buoy">
+
+Création de ticket **non rattachée à un projet** (menu Support : bug, question de compte, proposition/suivi de série, suggestion, autre) — distincte de `POST /projects/:slug/tickets` (signalement d'un projet ou d'un commentaire précis, voir plus haut).
+
+| Méthode | Route | Accès | Description |
+| --- | --- | --- | --- |
+| POST | `/tickets` | Connecté, rate-limité (20/min) | Body : `{ title, description, topic, priority?, projectId? }` (`topic` ∈ `bug\|account\|series\|suggestion\|other`, `projectId` pertinent seulement pour `series`). Accepte aussi `multipart/form-data` avec en plus un fichier `attachment` (capture d'écran). Ouvre automatiquement un canal `SUPPORT`. Réponse : `{ ticket, conversationId }`. |
+
+</Accordion>
+
+<Accordion title="/chat — Messagerie" icon="message-square">
+
+Toutes les routes nécessitent d'être connecté. Trois types : `DIRECT` (1:1), `GROUP` (équipe), `SUPPORT` (ticket).
+
+| Méthode | Route | Description |
+| --- | --- | --- |
+| GET | `/chat` | `{ conversations: PublicChatConversation[] }`, triées par activité. |
+| GET | `/chat/:id/messages` | Marque comme lue à l'ouverture. 403 si non participant. |
+| PUT | `/chat/:id/read` | Marque comme lue. |
+| POST | `/chat/messages` | Démarre/continue une conversation directe. Body : `{ recipientId, content }`. |
+| POST | `/chat/:id/messages` | Envoie un message, rate-limité. Body : `{ content }`. |
+| PUT | `/chat/messages/:messageId` | Modifie son propre message. |
+| DELETE | `/chat/messages/:messageId` | Masque son propre message (`isDeleted`). |
+| POST | `/chat/team/:teamId` | Récupère/crée le canal `GROUP` de l'équipe. |
+| POST | `/chat/support/:ticketId` | Récupère/crée le canal `SUPPORT` du ticket. |
+
+`admin`/`modérateur` ont accès à n'importe quel canal `SUPPORT` sans y avoir été explicitement ajoutés — ajoutés comme participant dès leur premier message.
+
+</Accordion>
+
+<Accordion title="/admin — Utilisateurs, tags, tickets, paramètres" icon="settings">
+
+### `/admin/users` (permission `MANAGE_USERS`, portée par le rôle Admin intégré)
+
+| Méthode | Route | Accès | Description |
+| --- | --- | --- | --- |
+| GET | `/admin/users/staff` | `MANAGE_USERS` | Liste non paginée admin+modérateur. |
+| GET | `/admin/users` | `MANAGE_USERS` | Paginée. Query `search`, `page`, `pageSize`. |
+| POST | `/admin/users` | `MANAGE_USERS` | Body : `{ username, password, role? }`. |
+| PUT | `/admin/users/:id` | `MANAGE_USERS` | Body : `{ role?, password?, avatarUrl?, status? }` (`status` jamais `DELETED` par cette route). |
+| GET | `/admin/users/:id/roles` | `MANAGE_ROLES` | `{ roleIds: number[] }` — rôles globaux portés par l'utilisateur. |
+| PUT | `/admin/users/:id/roles` | `MANAGE_ROLES` | Body : `{ roleIds: number[] }`. **Remplace intégralement** le jeu de rôles (pas un ajout/retrait unitaire). |
+| DELETE | `/admin/users/:id` | `MANAGE_USERS` | Impossible sur son propre compte. |
+
+### `/admin/roles` (permission `MANAGE_ROLES`)
+
+Catalogue des rôles globaux (voir [Rôles et permissions](/guide-equipe/roles-et-permissions)). Les 3 rôles intégrés (Admin/Modérateur/Lecteur) ne peuvent être ni renommés ni supprimés — seuls leurs bits sont modifiables.
+
+| Méthode | Route | Description |
+| --- | --- | --- |
+| GET | `/admin/roles` | Tous les rôles globaux, avec leur nombre de porteurs. |
+| POST | `/admin/roles` | Body : `{ name, color?, permissions: GlobalFlag[] }`. |
+| PUT | `/admin/roles/:id` | Même forme. 403 si `name` fourni pour un rôle intégré. |
+| DELETE | `/admin/roles/:id` | Refusé pour un rôle intégré. Retire le rôle de tous ses porteurs (cascade). |
+
+### `/admin/audit-log` (rôle Administrateur strictement — pas `MANAGE_USERS`/`MANAGE_ROLES`)
+
+| Méthode | Route | Description |
+| --- | --- | --- |
+| GET | `/admin/audit-log` | Paginé, le plus récent en premier. Query `page`, `pageSize` (déf. 50). Réponse : `{ entries: PublicAuditLogEntry[], total, page, pageSize }`. |
+
+`PublicAuditLogEntry` : `{ id, action, actorUserId, actorUsername, targetUserId, targetUsername, metadata, createdAt }`. Catalogue fermé d'actions (`AuditAction`) : changements de rôle/statut de compte, suppression de compte, CRUD de rôles globaux/d'équipe, changement des rôles d'un membre, pose/retrait de dérogation de projet, révocation de session, activation/désactivation 2FA, changement de mot de passe.
+
+### `/admin/tags` (admin/modérateur — suppression/fusion : admin)
+
+| Méthode | Route | Description |
+| --- | --- | --- |
+| GET | `/admin/tags` | `{ tags: PublicTag[] }` avec nombre d'utilisations. |
+| POST | `/admin/tags` | Body : `{ name, slug?, description?, color?, category?, explicit?, explicitReason? }`. 409 si nom existant. |
+| PUT | `/admin/tags/:id` | Mise à jour partielle. |
+| DELETE | `/admin/tags/:id` | admin uniquement. Détache sans supprimer les contenus. |
+| POST | `/admin/tags/:id/merge` | admin uniquement. Body : `{ targetId }`. |
+
+### `/admin/tickets`
+
+| Méthode | Route | Accès | Description |
+| --- | --- | --- | --- |
+| GET | `/admin/tickets` | admin/modérateur | Inclut `commentContent` si `commentId` porté. |
+| POST | `/admin/tickets/:id` | admin/modérateur | Body : `{ status?, priority?, staffId? }`. Notifie le déclarant. |
+| DELETE | `/admin/tickets/:id` | admin | Suppression. |
+
+### `/admin/settings` (admin uniquement)
+
+| Méthode | Route | Description |
+| --- | --- | --- |
+| GET | `/admin/settings` | `{ config: { featured_project_ids, home_layout, discord_url } }`. |
+| PUT | `/admin/settings` | Body libre par clé. `home_layout` validé avant écriture. |
+
+### Modération (`/admin/comments`, `/admin/article-comments`)
+
+Réversible : rien n'est jamais détruit.
+
+| Méthode | Route | Description |
+| --- | --- | --- |
+| DELETE | `/admin/comments/:id` | Supprime (réversible). |
+| POST | `/admin/comments/:id/restore` | Annule une suppression. |
+| PUT | `/admin/comments/:id` | Body : `{ isHidden }`. |
+| GET | `/admin/comments/:id/history` | `{ history: PublicCommentEdit[] }`. |
+
+`/admin/article-comments` suit exactement la même forme.
+
+</Accordion>
+
+<Accordion title="/admin/authors, /admin/teams" icon="users">
+
+### `/admin/authors` (admin/modérateur)
+
+| Méthode | Route | Description |
+| --- | --- | --- |
+| GET | `/admin/authors` | Paginée. Query `search`, `page`, `pageSize`. |
+| GET | `/admin/authors/:id` | Détail par id. |
+| POST | `/admin/authors` | Body : `{ name, slug?, bio?, avatarUrl?, bannerImageUrl?, externalLinks? }`. |
+| PUT | `/admin/authors/:id` | Mise à jour. |
+| GET | `/admin/authors/:id/stats` | Staff-only, tableau de bord agrégé. |
+| POST | `/admin/authors/:id/avatar` \| `/banner` | Upload multipart, rate-limité. |
+| DELETE | `/admin/authors/:id` | admin uniquement. |
+
+### `/admin/teams`
+
+| Méthode | Route | Accès | Description |
+| --- | --- | --- | --- |
+| GET | `/admin/teams` | Connecté | Toutes (staff) ou les siennes (sinon). |
+| GET | `/admin/teams/mine` | Connecté | Teams dont l'utilisateur est membre. |
+| GET | `/admin/teams/:id` | Connecté | Détail. |
+| POST | `/admin/teams` | admin/modérateur | Création. |
+| PUT | `/admin/teams/:id` | staff ou membre | `mangadexGroupId` : rejeté (403) pour un non-staff. |
+| POST | `/admin/teams/:id/avatar` \| `/banner` | staff ou membre | Upload multipart. |
+| DELETE | `/admin/teams/:id` | staff ou owner | Suppression. |
+| GET | `/admin/teams/:id/members` | Connecté | Avec `isManager`. |
+| POST | `/admin/teams/:id/members` | staff ou gérant | Body : `{ userId, role? }` (OWNER exclu). |
+| PUT | `/admin/teams/:id/members/:userId` | staff ou gérant | Body : `{ role }`. |
+| DELETE | `/admin/teams/:id/members/:userId` | staff ou gérant | Retire. |
+| POST | `/admin/teams/:id/transfer-ownership` | staff ou owner actuel | Body : `{ newOwnerUserId }`. Seul moyen d'attribuer OWNER. |
+
+#### Rôles d'équipe (`/admin/teams/:id/roles`, `/admin/teams/:id/members/:userId/roles`)
+
+| Méthode | Route | Accès | Description |
+| --- | --- | --- | --- |
+| GET | `/admin/teams/:id/roles` | Connecté | `{ roles: PublicTeamRole[] }` — catalogue de rôles de l'équipe. |
+| POST | `/admin/teams/:id/roles` | `TEAM_MANAGE_ROLES` (staff ou membre autorisé) | Crée un rôle d'équipe personnalisé. Body : `{ name, color?, permissions: TeamFlag[] }`. |
+| PUT | `/admin/teams/:id/roles/:roleId` | `TEAM_MANAGE_ROLES` | Mise à jour. |
+| DELETE | `/admin/teams/:id/roles/:roleId` | `TEAM_MANAGE_ROLES` | Refusé pour un rôle intégré (Owner/Manager/Member). |
+| GET | `/admin/teams/:id/members/:userId/roles` | Connecté | `{ teamRoleIds: number[] }` — rôles d'équipe portés par ce membre. |
+| PUT | `/admin/teams/:id/members/:userId/roles` | `TEAM_MANAGE_ROLES` | Body : `{ teamRoleIds: number[] }`. Remplace intégralement le jeu de rôles du membre. |
+
+</Accordion>
+
+<Accordion title="/admin/projects — Gestion des webcomics" icon="book-open">
+
+Nécessite d'être connecté ; gestion précise autorisée à `admin`/`modérateur` ou tout membre de la team propriétaire (`canManageProject`).
+
+| Méthode | Route | Accès | Description |
+| --- | --- | --- | --- |
+| GET | `/admin/projects` | Connecté | Filtrée selon les permissions. |
+| GET | `/admin/projects/:slug` | `canManageProject` | `{ project, chapters }`. |
+| POST | `/admin/projects` | `canManageProject` sur `teamId`, rate-limité | JSON ou multipart (upload `coverImage`/`bannerImage` en 2 temps). |
+| PUT | `/admin/projects/:slug` | `canManageProject` (ancienne **et** nouvelle équipe) | Mise à jour partielle. |
+| DELETE | `/admin/projects/:slug` | admin uniquement | Cascade (chapitres, commentaires, favoris). |
+| POST | `/admin/projects/:slug/chapters` | `canManageProject`, rate-limité | Multipart (`images[]` ou `zip`) ou JSON. `orderIndex` auto si omis. |
+| PUT | `/admin/projects/:slug/chapters/:chapterId` | `canManageProject` | Un nouvel upload **remplace** intégralement les pages. |
+| DELETE | `/admin/projects/:slug/chapters/:chapterId` | admin uniquement | — |
+| POST | `.../chapters/bulk/status` | `canManageProject` | Body : `{ ids, status }`. |
+| POST | `.../chapters/bulk/volume` | `canManageProject` | Body : `{ ids, volumeNumber }`. |
+| POST | `.../chapters/bulk/delete` | admin uniquement | Body : `{ ids }`. |
+
+#### Dérogations de permissions (`/admin/projects/:slug/overrides`)
+
+Réservé à `MANAGE_ROLES` — volontairement **non délégable** aux équipes, même à leur propriétaire (voir [Rôles et permissions](/guide-equipe/roles-et-permissions#dérogations-de-permissions-par-projet)).
+
+| Méthode | Route | Description |
+| --- | --- | --- |
+| GET | `/admin/projects/:slug/overrides` | `{ overrides: PublicProjectMemberOverride[] }`. |
+| PUT | `/admin/projects/:slug/overrides/:userId` | Body : `{ allow: TeamFlag[], deny: TeamFlag[] }`. Pose ou remplace la dérogation. |
+| DELETE | `/admin/projects/:slug/overrides/:userId` | Retire la dérogation. |
+
+`PublicProjectMemberOverride` : `{ id, projectId, userId, allow, deny }`. `deny` l'emporte sur `allow` en cas de chevauchement ; seule la permission `ADMINISTRATOR` passe outre.
+
+**Forme de création/mise à jour d'un projet** :
+
+```json
+{
+  "slug": "mon-projet",
+  "title": "Mon projet",
+  "status": "draft",
+  "visibility": "PRIVATE",
+  "seriesStatus": "ONGOING",
+  "authors": [{ "authorId": 1, "role": "WRITER" }],
+  "teams": [{ "teamId": 1, "role": "TRANSLATOR" }],
+  "tags": ["action"],
+  "externalLinks": ["https://..."]
+}
+```
+
+- Rôles auteur (`ProjectAuthorRole`) : `WRITER | ARTIST | AUTHOR | ILLUSTRATOR | OTHER`.
+- Rôles team (`ProjectTeamRole`) : `TRANSLATOR | EDITOR | CLEANER | TYPESETTER | PUBLISHER | OTHER`.
+- `visibility` (`ProjectVisibility`) : `PUBLIC | UNLISTED | PRIVATE | ARCHIVED`.
+- `seriesStatus` : `ONGOING | COMPLETED | HIATUS | LICENSED | CANCELLED`.
+
+</Accordion>
+
+<Accordion title="/admin/mangadex — Import" icon="download">
+
+Réservé à `admin`/`modérateur` — pas ouvert aux gérants d'équipe. Voir [Importer depuis MangaDex](/guide-equipe/importer-depuis-mangadex) pour le contexte fonctionnel complet.
+
+| Méthode | Route | Description |
+| --- | --- | --- |
+| GET | `/admin/mangadex/search` | Query `title`. Jusqu'à 10 résultats. |
+| GET | `/admin/mangadex/series/:mangaId` | Query `teamId`. Chapitres crédités au groupe MangaDex de l'équipe uniquement. 400 si `mangadexGroupId` absent. |
+| POST | `/admin/mangadex/import` | Rate-limité (5/min). Body : `{ mangaId, teamId, chapterIds: string[] }`. Revérifié côté serveur avant import. |
+
+</Accordion>
+
+<Accordion title="/tools — Outils d'édition d'images" icon="wand-2">
+
+Réservé à `admin`/`modérateur`, ou tout membre d'au moins une équipe. Aucun résultat n'est jamais persisté sur le serveur — traitement en mémoire, réponse binaire ou archive ZIP directement.
+
+| Méthode | Route | Description |
+| --- | --- | --- |
+| POST | `/tools/merge` | Fusionne ≥2 images en une planche verticale. |
+| POST | `/tools/split` | Découpe une image en tranches (`mode=intelligent\|fixed`). |
+| POST | `/tools/resize` | Redimensionne par dimensions ou pourcentage. |
+| POST | `/tools/clear-bubbles` | Vide les bulles de dialogue simples (heuristique pixels). |
+| POST | `/tools/convert` | Convertit vers `png\|webp\|jpeg`. |
+| POST | `/tools/watermark` | Filigrane texte (9 ancres de position). |
+| POST | `/tools/normalize` | Correction contraste/luminosité/saturation. |
+| POST | `/tools/quality-check` | Rapport JSON (ne transforme rien). |
+| POST | `/tools/upscale` | Sur-échantillonnage IA (waifu2x), 1 image/requête, 503 si non configuré sur l'instance. |
+
+Voir [Outils d'édition d'images](/guide-equipe/outils-images) pour le détail fonctionnel de chaque outil.
+
+</Accordion>
+
+</AccordionGroup>
+
+## Fichiers uploadés
+
+Les images (couvertures, bannières, pages de chapitres, avatars) sont stockées sur disque (`data/webcomics`) et servies statiquement sous `/uploads/*`.
+
+## Notes de conception
+
+- Le contrat public (formes `Public*`, rôles, statuts) est intentionnellement stable — voir `db/services/*.services.ts`.
+- `authors`/`teams` sur un projet sont additifs : les champs historiques (`authorName`, `team`) continuent de représenter le premier crédit pour ne pas casser les vues compactes.
+- Les badges/niveau/série de lecture (`achievements`) sont calculés à la volée, jamais stockés.

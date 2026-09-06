@@ -1,0 +1,48 @@
+---
+title: "Outils d'édition d'images"
+description: "Fusion, découpe, redimensionnement, filigrane et plus, en un clic"
+---
+
+La page **Outils** (`/tools`) regroupe des utilitaires de traitement d'images pensés pour préparer des pages de chapitre en lot, sans logiciel de retouche externe.
+
+<Info>
+  **Qui peut faire ça ?** Tout membre d'au moins une équipe (quel que soit son rôle dans l'équipe), ou le staff (`admin`/`modérateur`). Un visiteur non membre d'équipe n'a pas accès à cette page.
+</Info>
+
+<Warning>
+  Rien de ce que vous traitez n'est jamais écrit sur le disque du serveur : tout est traité **en mémoire** et renvoyé directement en téléchargement — à charge pour vous de sauvegarder le résultat.
+</Warning>
+
+<AccordionGroup>
+  <Accordion title="Fusion" icon="combine">
+    Empile plusieurs images en une seule planche verticale, sur fond blanc, dans l'ordre choisi. Format de sortie PNG ou WebP (sans perte).
+  </Accordion>
+  <Accordion title="Découpe" icon="scissors">
+    Découpe une longue image en plusieurs pages, renvoyées en archive ZIP. Mode **intelligent** (par défaut) : cherche une ligne de coupe « plate » proche de la hauteur cible, pour éviter de couper au milieu d'une case. Mode **fixe** : coupe à hauteur constante.
+  </Accordion>
+  <Accordion title="Redimensionner" icon="maximize-2">
+    Redimensionne une ou plusieurs images par dimensions exactes ou par pourcentage, avec conservation optionnelle du ratio et protection contre l'agrandissement (activée par défaut — un agrandissement n'est jamais réellement « sans perte »).
+  </Accordion>
+  <Accordion title="Vider les bulles" icon="eraser">
+    Vide automatiquement les bulles de dialogue à aplat clair cerné d'un trait sombre — une heuristique par analyse de pixels, **pas un modèle d'IA entraîné**. Fonctionne bien sur des bulles simples, échoue sur des bulles texturées ou du texte posé directement sur le dessin.
+  </Accordion>
+  <Accordion title="Conversion" icon="refresh-cw">
+    Convertit un lot d'images vers PNG, WebP ou JPEG, avec réglage de qualité (WebP/JPEG) et option sans perte (WebP).
+  </Accordion>
+  <Accordion title="Filigrane" icon="stamp">
+    Ajoute un filigrane texte (crédit d'équipe, marque de traduction...) sur un lot d'images — position (9 ancres), opacité, couleur et taille de police réglables.
+  </Accordion>
+  <Accordion title="Contrôle qualité" icon="clipboard-check">
+    Le seul outil qui ne transforme rien : analyse un lot d'images et renvoie un rapport (résolution, poids, orientation, cohérence des largeurs du lot, doublons visuels, contraste, netteté indicative) — utile en dernière vérification avant publication d'un chapitre.
+  </Accordion>
+  <Accordion title="Normalisation" icon="sliders-horizontal">
+    Correction colorimétrique en lot : égalisation automatique de l'histogramme, ou réglages manuels de luminosité/saturation/contraste.
+  </Accordion>
+  <Accordion title="Sur-échantillonnage IA" icon="sparkles">
+    Agrandit une image avec un modèle façon waifu2x (facteur ×2 ou ×4, réduction de bruit réglable). Traitement lourd (dizaines de secondes) : une seule image à la fois, limité à 3 opérations par minute. Peut être indisponible selon la configuration de l'instance (renvoie une erreur explicite si l'outil n'est pas installé).
+  </Accordion>
+</AccordionGroup>
+
+<Note>
+  Chaque outil applique une limite de fréquence dédiée (généralement 5 traitements par minute par compte) pour préserver les ressources du serveur, sur des traitements potentiellement coûteux en CPU/mémoire.
+</Note>

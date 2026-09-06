@@ -1,0 +1,179 @@
+---
+title: "Déploiement"
+description: "Développement local, production Docker et sans Docker, variables d'environnement"
+---
+
+## Déploiement en développement
+
+### Prérequis
+
+- [Bun](https://bun.sh) ≥ 1.0
+- Une base **PostgreSQL** accessible (locale, Docker, ou distante)
+
+<Steps>
+  <Step title="Récupérer une base PostgreSQL">
+    Le plus simple est d'en lancer une avec Docker, sans toucher au reste de la stack :
+
+    ```bash
+    docker run -d --name komamy-postgres \
+      -e POSTGRES_USER=komamy -e POSTGRES_PASSWORD=komamy -e POSTGRES_DB=komamy \
+      -p 5432:5432 postgres:16-alpine
+    ```
+  </Step>
+  <Step title="Configurer l'environnement">
+    ```bash
+    cp .env.example .env
+    ```
+
+    `.env.example` est déjà pré-rempli pour pointer vers la base ci-dessus (`postgres://komamy:komamy@localhost:5432/komamy`) ; ajustez si votre base est ailleurs.
+  </Step>
+  <Step title="Installer les dépendances">
+    ```bash
+    bun install
+    ```
+  </Step>
+  <Step title="Lancer le serveur de développement">
+    ```bash
+    bun run dev
+    ```
+
+    Cette commande démarre en parallèle le serveur Hono (API, port `3000`, rechargement automatique via `bun --watch`) et Vite (frontend avec HMR, port `5173`, qui proxifie `/api` vers le backend).
+
+    Au démarrage, le serveur applique automatiquement les migrations Drizzle et crée le compte administrateur par défaut si la base est vide (voir [Identifiants admin par défaut](#identifiants-admin-par-défaut)).
+
+    Ouvrez `http://localhost:5173`.
+  </Step>
+</Steps>
+
+## Déploiement en production (Docker)
+
+C'est la méthode recommandée : `docker-compose.yml` fournit à la fois la base PostgreSQL et le service applicatif.
+
+<Warning>
+  Les deux volumes (`komamy-data`, `komamy-db-data`) sont déclarés `external: true` : Compose s'attache à un volume existant plutôt que d'en gérer le cycle de vie lui-même, ce qui évite qu'une plateforme de déploiement les recrée (voir l'encadré Dokploy ci-dessous). Il faut donc les créer une seule fois, avant le premier démarrage.
+</Warning>
+
+```bash
+docker volume create komamy-data
+docker volume create komamy-db-data
+
+cp .env.example .env
+# éditez .env : JWT_SECRET (obligatoire), ADMIN_USERNAME, ADMIN_PASSWORD, POSTGRES_PASSWORD…
+
+docker compose up -d --build
+```
+
+(`docker volume create` est sans effet si le volume existe déjà — commande sûre à rejouer.)
+
+Cela démarre deux conteneurs :
+
+- **`postgres`** : PostgreSQL 16, données persistées dans le volume nommé `komamy-db-data`.
+- **`komamy`** : l'application (build Node.js multi-stage), qui attend que Postgres soit prêt (`healthcheck`) avant de démarrer. Au premier lancement, les migrations sont appliquées et le compte admin est créé automatiquement.
+
+L'application expose le port `3000` (configurable via `PORT`), sert l'API (`/api/*`) et le frontend buildé, et persiste les fichiers uploadés dans le volume `komamy-data` (`/app/data`).
+
+Pour reconstruire après une mise à jour du code (y compris un changement de schéma) :
+
+```bash
+docker compose up -d --build
+```
+
+Pour suivre les logs ou arrêter la stack :
+
+```bash
+docker compose logs -f komamy
+docker compose down          # conserve les volumes (données)
+```
+
+### Déploiement via Dokploy / Coolify / CapRover / Portainer
+
+Ces plateformes reconstruisent l'image applicative à chaque mise à jour (elles font un `git clone` frais puis rebuild), ce qui fait réévaluer la configuration du service `komamy` par Compose à chaque déploiement — contrairement à `postgres`, dont l'image ne change jamais.
+
+<Warning>
+  Sans `external: true`, Compose peut considérer que le volume déclaré « ne correspond plus à la configuration » et le recréer (vidé) au lieu de le réutiliser : c'est très probablement ce qui cause une perte des images uploadées à chaque mise à jour. Avec `external: true` (déjà en place dans ce dépôt), Compose échoue proprement si le volume n'existe pas, plutôt que de le recréer silencieusement.
+</Warning>
+
+Pensez à exécuter les deux `docker volume create` ci-dessus **une fois**, directement sur l'hôte (terminal SSH ou console intégrée de la plateforme), avant le premier déploiement avec cette configuration. Si votre plateforme propose son propre système de stockage persistant en plus du `docker-compose.yml` (onglet « Persistent Storage », « Volumes », « Mounts »...), montez-y `/app/data` en complément — certaines plateformes l'exigent pour suivre correctement le volume dans leurs propres sauvegardes.
+
+## Déploiement en production (sans Docker)
+
+Si vous préférez gérer PostgreSQL et le processus Node vous-même :
+
+```bash
+# 1. Base de données
+#    Provisionnez un PostgreSQL accessible et notez son URL de connexion.
+
+# 2. Configuration
+cp .env.example .env
+# éditez DATABASE_URL, JWT_SECRET, ADMIN_USERNAME, ADMIN_PASSWORD, PORT, NODE_ENV=production
+
+# 3. Dépendances + build
+bun install
+bun run build        # build:client (Vite) + build:server (tsc → dist-server/)
+
+# 4. Démarrage
+NODE_ENV=production bun run start
+```
+
+Le serveur sert à la fois l'API et les fichiers statiques du frontend buildé (`dist/client`), avec repli sur `index.html` pour les routes gérées côté client. Comme en développement, les migrations et le compte admin sont initialisés automatiquement au démarrage.
+
+## Variables d'environnement
+
+| Variable | Description | Défaut |
+| --- | --- | --- |
+| `PORT` | Port d'écoute HTTP | `3000` |
+| `NODE_ENV` | `development` ou `production` | — |
+| `JWT_SECRET` | Secret de signature des JWT (**à changer impérativement en production**, ex. `openssl rand -base64 48`) | `change-this-to-a-long-random-secret-in-production` |
+| `DATABASE_URL` | URL de connexion PostgreSQL | `postgres://komamy:komamy@localhost:5432/komamy` |
+| `ADMIN_USERNAME` | Pseudo du compte admin créé au premier démarrage | `admin` |
+| `ADMIN_PASSWORD` | Mot de passe du compte admin créé au premier démarrage | `changeme123` |
+| `SITE_URL` | URL publique canonique du site (sans `/` final), pour les liens cliquables des webhooks Discord | — |
+
+Pour `docker-compose.yml` uniquement, ces variables additionnelles configurent le conteneur Postgres :
+
+| Variable | Description | Défaut |
+| --- | --- | --- |
+| `POSTGRES_USER` | Utilisateur PostgreSQL | `komamy` |
+| `POSTGRES_PASSWORD` | Mot de passe PostgreSQL | `komamy` |
+| `POSTGRES_DB` | Nom de la base | `komamy` |
+
+## Base de données & migrations
+
+Le schéma vit dans `db/schema/*.ts` (Drizzle ORM). Deux commandes `drizzle-kit` sont disponibles :
+
+```bash
+bun run db:generate   # génère une migration SQL versionnée dans drizzle/ à partir du schéma
+bun run db:push       # pousse le schéma directement sur une base (pratique en dev, sans fichier de migration)
+```
+
+Après toute modification de `db/schema/*.ts`, générez une migration et commitez-la :
+
+```bash
+bun run db:generate
+git add drizzle/
+```
+
+Le serveur applique automatiquement les migrations du dossier `drizzle/` à chaque démarrage (dev comme prod) — c'est pourquoi ce dossier doit rester versionné.
+
+<Warning>
+  Les migrations sont ré-appliquées à chaque démarrage du serveur ; sur un déploiement multi-instances, préférez faire jouer les migrations une seule fois (job dédié) plutôt que de compter sur le démarrage de chaque instance.
+</Warning>
+
+## Identifiants admin par défaut
+
+Au tout premier démarrage (table `users` vide), un compte administrateur est automatiquement créé :
+
+```
+Utilisateur : admin
+Mot de passe : changeme123
+```
+
+<Warning>
+  Changez ce mot de passe immédiatement après le premier lancement (page `/settings` une fois connecté, ou via l'API `/api/auth/change-password`). Ces identifiants sont personnalisables avant le premier démarrage via `ADMIN_USERNAME` / `ADMIN_PASSWORD`.
+</Warning>
+
+## Limitations connues
+
+- **Recherche** : utilise `ILIKE` SQL — pas d'indexation full-text ni de scoring de pertinence.
+- **Upload d'images** : fichiers stockés sur le disque local (`data/webcomics`, servi via `/uploads`) — pas d'intégration S3/objet natif ; en production, ce volume doit être sauvegardé comme la base.
+- **Tests** : couvre l'authentification, les permissions admin, et les fonctionnalités les plus récentes — pas encore une couverture exhaustive de toutes les routes.

@@ -1,22 +1,68 @@
 ---
 title: "Bienvenue"
-description: "Welcome to your project"
+description: "Komamy — plateforme auto-hébergée de lecture de webcomics/scans"
 ---
 
-Write a short description of your product here. What it does, who it's for, and what they can accomplish with it.
+**Komamy** est une plateforme auto-hébergée de lecture de webcomics/scans façon [mangadex.org](https://mangadex.org), doublée d'un espace d'annonces éditoriales et d'un espace communautaire (messagerie privée, commentaires, blog communautaire, tickets de signalement). Écrite entièrement en TypeScript, elle tourne sur [Bun](https://bun.sh) avec une base de données PostgreSQL.
+
+Cette documentation couvre trois publics : les **lecteurs** qui utilisent le site au quotidien, les **teams** qui publient des webcomics, et les **développeurs/opérateurs** qui font tourner et font évoluer l'instance.
+
+<CardGroup cols={2}>
+  <Card title="Démarrage rapide" icon="rocket" href="/quickstart">
+    Déployez une instance Komamy en quelques minutes avec Docker.
+  </Card>
+  <Card title="Guide lecteur" icon="book-open" href="/guide-lecteur/compte-et-profil">
+    Créer un compte, lire, commenter, suivre vos équipes préférées.
+  </Card>
+  <Card title="Guide équipe" icon="users" href="/guide-equipe/roles-et-permissions">
+    Publier des projets, des chapitres, des articles, gérer une équipe.
+  </Card>
+  <Card title="Documentation développeur" icon="code" href="/developpeurs/architecture">
+    Architecture, base de données, API, contribution et déploiement.
+  </Card>
+</CardGroup>
+
+## Fonctionnalités principales
+
+<AccordionGroup>
+  <Accordion title="Webcomics" icon="book-open">
+    Projets organisés en chapitres (pages images, uploadées individuellement ou en `.zip`, ou importées depuis MangaDex), tags, favoris, notes 1-5 étoiles, historique/suivi de lecture, téléchargement CBZ, compteur de vues par chapitre.
+  </Accordion>
+  <Accordion title="Auteurs & équipes" icon="users">
+    Fiches publiques d'auteurs et d'équipes de scan (« teams »), avec membres et rôles, fil d'actualité façon réseau social, agenda de sorties, succès et statistiques d'équipe.
+  </Accordion>
+  <Accordion title="Annonces & blog communautaire" icon="newspaper">
+    Articles Markdown éditoriaux (réservés au staff) avec tags et statut brouillon/publié, et un blog communautaire ouvert à tout utilisateur connecté (catégories, tags libres, réactions).
+  </Accordion>
+  <Accordion title="Communauté" icon="message-circle">
+    Commentaires par projet/chapitre/article, messagerie privée, tickets de signalement, mentions (`@utilisateur`, `@œuvre`...), notifications par type.
+  </Accordion>
+  <Accordion title="Recherche globale" icon="search">
+    Projets, auteurs, équipes, utilisateurs et tags dans une seule requête, plus autocomplétion en temps réel.
+  </Accordion>
+  <Accordion title="Administration" icon="settings">
+    Gestion des utilisateurs, articles, webcomics, auteurs, équipes, tickets, tags et paramètres du site, avec accès restreint par rôle — voir <a href="/guide-equipe/roles-et-permissions">Rôles &amp; permissions</a>.
+  </Accordion>
+  <Accordion title="Outils d'édition d'images" icon="wand-2">
+    Fusion/découpe de planches, redimensionnement, vidage de bulles, conversion, filigrane, contrôle qualité, sur-échantillonnage IA — réservés aux membres d'équipe et au staff.
+  </Accordion>
+  <Accordion title="PWA installable" icon="smartphone">
+    Manifest + service worker, icônes dédiées, coquille applicative disponible hors-ligne et cache des images de chapitres déjà consultées.
+  </Accordion>
+</AccordionGroup>
+
+## Stack technique
+
+| Domaine | Choix |
+| --- | --- |
+| Runtime | [Bun](https://bun.sh) (≥ 1.0) |
+| Backend | [Hono](https://hono.dev) |
+| Base de données | PostgreSQL via [Drizzle ORM](https://orm.drizzle.team) |
+| Auth | JWT signé ([`jose`](https://github.com/panva/jose)), cookie httpOnly, passkeys (WebAuthn) en complément |
+| Validation | [Zod](https://zod.dev) |
+| Frontend | Svelte 5 (runes) + TypeScript + Vite + Tailwind CSS |
+| Données côté client | [TanStack Query](https://tanstack.com/query) |
 
 <Tip>
-  Ready to make this your own? Start by editing this page. Update your `docs.json` file to customize your site. Then fill out the [Quickstart](/quickstart) page.
+  Vous administrez déjà une instance ? Passez directement au [guide équipe](/guide-equipe/roles-et-permissions) pour publier votre premier projet, ou à la [documentation développeur](/developpeurs/architecture) pour comprendre le code.
 </Tip>
-
-<Card title="Quickstart" icon="rocket" href="/quickstart">
-  This card links to the quickstart page in your project.
-</Card>
-
-<Card title="Components" icon="puzzle-piece" href="https://mintlify.com/docs/components">
-  Add cards, callouts, steps, tabs, and more to design and structure your pages.
-</Card>
-
-<Card title="Settings" icon="gear" href="https://mintlify.com/docs/organize/settings">
-  Set your site name, branding, and navigation in the `docs.json` file.
-</Card>

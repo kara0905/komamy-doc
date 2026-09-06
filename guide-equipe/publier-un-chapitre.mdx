@@ -1,0 +1,101 @@
+---
+title: "Publier un chapitre"
+description: "Ajouter des pages à un projet, par images ou archive ZIP"
+---
+
+Un chapitre appartient à un projet déjà existant (voir [Publier un projet](/guide-equipe/publier-un-projet) s'il n'existe pas encore) et contient une série de pages (images).
+
+<Info>
+  **Qui peut faire ça ?** `admin`, `modérateur`, ou tout compte `lecteur` membre de l'équipe créditée sur le projet.
+</Info>
+
+<Steps>
+  <Step title="Ouvrir l'onglet « Nouveau chapitre »">
+    Depuis la fiche d'un projet existant (`/admin/webcomics/:slug`), cliquez sur l'onglet **Nouveau chapitre**.
+
+    <Frame>
+      <img src="/images/guides/guide-chapitre-01-vide.png" alt="Formulaire de nouveau chapitre, vide" />
+    </Frame>
+
+    <Note>
+      Cet onglet n'existe que pour un projet déjà créé — impossible d'ajouter un chapitre en même temps que le projet.
+    </Note>
+  </Step>
+  <Step title="Renseigner le titre et choisir une méthode d'import">
+    - **Titre du chapitre** — le slug se pré-remplit automatiquement (modifiable).
+    - **Description** — optionnelle.
+    - **Numéro de chapitre / volume** — numériques, décimaux acceptés (ex. `4.5`).
+    - **Méthode d'importation** — bascule entre **Images** et **Archive ZIP** ; les deux conservent correctement l'ordre des pages.
+
+    <Tabs>
+      <Tab title="Archive ZIP">
+        Préparez un fichier `.zip` contenant vos images de pages (formats acceptés : `png, jpg, jpeg, webp, gif, svg, avif, ico`), puis sélectionnez-le :
+
+        <Frame>
+          <img src="/images/guides/guide-chapitre-04-mode-zip.png" alt="Mode Archive ZIP sélectionné" />
+        </Frame>
+        <Frame>
+          <img src="/images/guides/guide-chapitre-05-zip-selectionne.png" alt="Fichier ZIP sélectionné, prêt à être importé" />
+        </Frame>
+      </Tab>
+      <Tab title="Images">
+        Sélectionnez plusieurs fichiers directement, avec un aperçu en grille numérotée :
+
+        <Frame>
+          <img src="/images/guides/guide-chapitre-02-images-selectionnees.png" alt="Mode Images : trois pages sélectionnées, avec aperçu numéroté" />
+        </Frame>
+      </Tab>
+    </Tabs>
+  </Step>
+  <Step title="Créer le chapitre">
+    Cliquez sur **Créer le chapitre**. Retrouvez-le dans l'onglet **Chapitres**, qui liste désormais tous les chapitres du projet :
+
+    <Frame>
+      <img src="/images/guides/guide-chapitre-06-liste.png" alt="Liste des chapitres du projet, avec nombre de pages et date" />
+    </Frame>
+  </Step>
+</Steps>
+
+## Statut et publication programmée
+
+Un chapitre a l'un des trois statuts suivants :
+
+| Statut | Effet |
+| --- | --- |
+| **Publié** | Visible immédiatement de tout le monde. |
+| **Brouillon** | Invisible du public — visible seulement par le staff et l'équipe créditée. Peut porter une **date de publication programmée** : le chapitre bascule automatiquement en Publié dès qu'un visiteur charge le site après cette date (pas de tâche planifiée séparée). |
+| **Masqué** | Retiré de la circulation sans être supprimé (utile pour dépublier temporairement sans perdre le contenu). |
+
+## Modifier les pages d'un chapitre existant
+
+Cliquez sur l'icône crayon d'un chapitre pour l'éditer : titre, slug, description, statut, et surtout la **réorganisation des pages** par glisser-déposer.
+
+<Frame>
+  <img src="/images/guides/guide-chapitre-07-edition-pages.png" alt="Édition d'un chapitre : pages réorganisables par glisser-déposer" />
+</Frame>
+
+- Glissez une vignette pour changer l'ordre des pages.
+- La croix en haut à droite d'une vignette la retire du chapitre.
+- La case en pointillés « Ajouter des pages » permet d'ajouter de nouvelles images, y compris plusieurs fichiers à la fois.
+- Un nouvel upload d'images **remplace intégralement** les pages existantes.
+- N'oubliez pas **Enregistrer le chapitre** pour valider les changements.
+
+## Actions groupées
+
+Depuis la liste des chapitres, sélectionnez plusieurs chapitres pour :
+
+- Changer leur **statut** en une fois.
+- Leur assigner un **numéro de volume** commun.
+- Les **supprimer** en groupe (réservé à `admin`).
+
+## Aperçu côté lecteur
+
+<Frame>
+  <img src="/images/guides/guide-chapitre-08-lecteur.png" alt="Lecteur de chapitre, affichant une page du chapitre" />
+</Frame>
+
+## Notes
+
+- Seul `admin` peut **supprimer** un chapitre — la suppression efface aussi son dossier de fichiers sur le disque.
+- L'ordre des chapitres dans la liste (`orderIndex`) suit par défaut l'ordre de création, modifiable manuellement.
+- Un chapitre peut aussi provenir d'un [import MangaDex](/guide-equipe/importer-depuis-mangadex) — il naît alors toujours en Brouillon, jamais publié automatiquement.

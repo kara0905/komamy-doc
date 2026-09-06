@@ -1,0 +1,110 @@
+---
+title: "Architecture client"
+description: "Svelte 5, routage, TanStack Query et le pattern de hooks"
+---
+
+Le client est une application **Svelte 5** (runes : `$state`, `$derived`, `$effect`, `$props`), pas React. Bundler : Vite. Routage : [`svelte-routing`](https://github.com/EmilTholin/svelte-routing). Données serveur : [TanStack Query](https://tanstack.com/query) (`@tanstack/svelte-query`).
+
+Ce document complète [Architecture](/developpeurs/architecture) (vue d'ensemble client/serveur/DB) côté client uniquement.
+
+## Structure des dossiers
+
+```
+client/src/
+├── App.svelte              # Deux <Router> imbriqués (voir "Routage" ci-dessous)
+├── routes/                  # Une page = une route, montée par App.svelte
+│   └── home/                 # Sous-composants propres à Home.svelte
+├── lib/
+│   ├── api.ts                 # Client HTTP (fetch wrapper), voir "Le client HTTP"
+│   ├── queryClient.ts          # Instance TanStack Query partagée par toute l'app
+│   ├── mentions.ts, webcomic.ts, homeLayoutGrid.ts, ...  # Utilitaires purs, testés unitairement
+│   ├── stores/                  # État global multi-composants (auth, thème, modal "Poster du contenu")
+│   ├── actions/                  # Hooks Svelte 5 réutilisables (*.svelte.ts), voir "Le pattern hook"
+│   └── components/
+│       ├── sidebar/                # Navigation (Desktop/Mobile × Sidebar/TopNav/Drawer, dupliquée volontairement)
+│       ├── webcomic/                # Fiche projet, commentaires, modals de signalement/collection
+│       ├── admin/                    # Onglets d'admin + webcomic-editor/
+│       ├── reader/                    # Lecteur de chapitre
+│       ├── chat/, comments/, team/, profile/, home/, form/, states/  # Un dossier par domaine
+│       └── *.svelte (racine)           # Composants génériques transverses
+└── styles/                  # CSS global (Tailwind)
+```
+
+Chaque route non-triviale a en général trois fichiers qui collaborent : un composant sous `routes/` (la page), un hook sous `lib/actions/` (l'état et les mutations), et un ou plusieurs composants sous `lib/components/<domaine>/` (la présentation, réutilisable). `ProjectPage.svelte` + `useReportTicket.svelte.ts` + `ReportTicketModal.svelte` en est un exemple représentatif.
+
+## Routage
+
+`App.svelte` déclare **deux `<Router>` imbriqués** : le lecteur de chapitre (`/webcomics/:slug/:chapterSlug`) est monté **hors** de `Layout.svelte` (pas de sidebar, plein écran), toutes les autres routes passent par `Layout` (sidebar + navigation + transition de page). C'est le seul point notable de la configuration de routage — à préserver si on ajoute une route.
+
+Les pages sont chargées en **lazy** via `LazyRoute.svelte` (`{#await load()}` sur un `import()` dynamique), sauf `Home.svelte` qui reste dans le bundle initial.
+
+## Le client HTTP (`lib/api.ts`)
+
+Wrapper `fetch` minimal, pas de dépendance externe :
+
+- `credentials: 'include'` systématique — c'est ce qui transmet le cookie httpOnly `komamy_session` à chaque requête, sans rien à gérer côté appelant.
+- `api.get/post/put/delete` renvoient directement le JSON parsé (typé via générique `<T>`), ou lèvent une `ApiError` (avec `.status`) si la réponse n'est pas `ok`.
+- `api.uploadWithProgress` est un chemin séparé (`XMLHttpRequest`, pas `fetch`) réservé aux uploads volumineux (pages de chapitre) : `fetch` n'expose pas d'événement de progression pour l'envoi.
+
+## Récupération de données : TanStack Svelte Query
+
+`queryClient.ts` configure une instance unique (`retry: false`, `refetchOnWindowFocus: false`, `staleTime: 30s`), fournie à toute l'app via `<QueryClientProvider>` dans `App.svelte`.
+
+Convention de `queryKey` observée partout : **le chemin de la route API**, en tableau, ex. `['/api/auth/me']`, `['/api/admin/tickets', page]`. Ça rend les invalidations lisibles par grep et évite d'inventer un nommage parallèle à l'API.
+
+Pattern d'écriture standard (`createMutation`) : la mutation appelle `api.post/put/delete`, et son `onSuccess` invalide les `queryKey` affectés plutôt que de mettre à jour le cache à la main — plus simple à maintenir, au prix d'un aller-retour réseau de plus après chaque écriture (accepté partout dans ce code plutôt que des mises à jour optimistes).
+
+## Le pattern « hook » Svelte 5 (`lib/actions/*.svelte.ts`)
+
+Le code réutilise abondamment un pattern équivalent aux hooks React, rendu possible par les runes Svelte 5 utilisables **en dehors** d'un composant `.svelte`, dans un module `.svelte.ts` : une fonction qui déclare de l'état privé avec `$state`, éventuellement une ou plusieurs `createQuery`/`createMutation`, et retourne un objet à accesseurs (`get x() { return x; }`) plutôt que l'état brut, pour rester réactif chez l'appelant.
+
+Exemple représentatif — `useReportTicket.svelte.ts`, utilisé par `ProjectPage.svelte` et `ReaderPage.svelte` pour ne pas dupliquer la mutation de signalement :
+
+```ts
+export function useReportTicket(slug: () => string | undefined) {
+  let open = $state(false);
+  let form = $state({ ...EMPTY_FORM });
+
+  const createTicketMutation = createMutation(() => ({
+    mutationFn: (payload) => api.post(`/projects/${slug()}/tickets`, payload),
+    onSuccess: () => {
+      /* invalide les caches affectés, referme le modal après un délai */
+    },
+  }));
+
+  return {
+    get open() {
+      return open;
+    },
+    openModal(prefillTitle) {
+      /* ... */
+    },
+    submit(e) {
+      e.preventDefault();
+      createTicketMutation.mutate(form);
+    },
+    // ...
+  };
+}
+```
+
+Le composant `.svelte` (page ou modal) ne fait qu'appeler le hook et lier ses accesseurs aux props d'un composant de présentation — la logique (état, mutation, invalidations, minuteries de fermeture) reste testable et réutilisable indépendamment du rendu. `usePostContentTicket.svelte.ts`, `useProjectComments.svelte.ts`, `useReadingProgressTracker.svelte.ts` et `useReaderSettings.svelte.ts` suivent le même schéma.
+
+<Tip>
+  Le paramètre `slug: () => string | undefined` (une fonction, pas une valeur) est une convention récurrente : passer un **accesseur** plutôt que la valeur elle-même permet au hook de lire un prop réactif du composant appelant à chaque exécution, sans que le hook ait besoin de son propre `$props()`.
+</Tip>
+
+## État partagé entre composants (`lib/stores/`)
+
+Deux mécanismes coexistent, choisis au cas par cas :
+
+- **Store Svelte classique** (`writable`, `$store` dans le template) — `stores/theme.ts`, `stores/auth.ts`. `auth.ts` est en fait un simple wrapper autour de `createQuery(['/api/auth/me'])` : TanStack Query dédoublonne déjà par `queryKey`, donc plusieurs appels à `useAuth()` dans des composants différents partagent le même cache sans store dédié.
+- **`$state` au niveau module** (`.svelte.ts`, pas de `writable`) — `stores/postContentModal.svelte.ts` : un simple `export const postContentModalStore = $state({ open: false })`. Utilisé quand plusieurs composants sans lien de parenté direct doivent partager un flag sans faire descendre un callback à travers toute la hiérarchie.
+
+## Navigation dupliquée par design
+
+`SidebarContent.svelte` (sidebar desktop étendue + contenu du tiroir mobile), `DesktopTopNav.svelte` (sidebar desktop repliée) et `MobileBottomNav.svelte` (barre du bas mobile) énumèrent chacun les mêmes liens indépendamment — `navConfig.ts` ne partage que les classes CSS et un helper de génération de props actives, pas la liste des liens elle-même.
+
+<Warning>
+  Tout ajout d'entrée de navigation globale doit donc être répété dans les trois fichiers (`MobileDrawer.svelte` réutilise directement `SidebarContent`, donc pas de quatrième copie).
+</Warning>

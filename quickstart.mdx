@@ -1,47 +1,72 @@
 ---
-title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+title: "Démarrage rapide"
+description: "Déployer une instance Komamy en local ou en production avec Docker"
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
+Ce guide vous amène d'un dépôt vide à une instance Komamy fonctionnelle. Deux chemins possibles : **Docker** (recommandé, décrit ici) ou une installation manuelle avec Bun + PostgreSQL (voir [Déploiement](/developpeurs/deploiement) pour le détail complet, les variables d'environnement et le déploiement sans Docker).
 
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
+## Prérequis
 
-## Prerequisites
-
-Before you begin, you must have:
-
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
-
-## Get started
+- [Docker](https://docs.docker.com/get-docker/) et Docker Compose
+- Le dépôt Komamy cloné localement
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
+  <Step title="Créer les volumes persistants">
+    Les volumes sont déclarés `external: true` dans `docker-compose.yml` — ils doivent exister avant le premier démarrage :
 
     ```bash
-    npm install your-package
+    docker volume create komamy-data
+    docker volume create komamy-db-data
     ```
+
+    <Note>
+      Cette précaution évite qu'une plateforme de déploiement (Dokploy, Coolify, CapRover...) ne recrée le volume — et donc n'efface vos images — à chaque redéploiement. Voir [Déploiement](/developpeurs/deploiement#déploiement-via-dokploy--coolify--caprover--portainer) pour le détail.
+    </Note>
   </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
-
+  <Step title="Configurer l'environnement">
     ```bash
-    your-cli init
+    cp .env.example .env
     ```
+
+    Éditez au minimum `.env` :
+
+    - `JWT_SECRET` — obligatoire en production (`openssl rand -base64 48`)
+    - `ADMIN_USERNAME` / `ADMIN_PASSWORD` — identifiants du compte admin créé au premier démarrage
+    - `POSTGRES_PASSWORD` — mot de passe de la base Postgres du conteneur
   </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
-
+  <Step title="Démarrer la stack">
     ```bash
-    your-cli start
+    docker compose up -d --build
     ```
+
+    Deux conteneurs démarrent : `postgres` (PostgreSQL 16) et `komamy` (l'application). Au premier lancement, les migrations sont appliquées et le compte administrateur est créé automatiquement — aucune étape manuelle supplémentaire.
+  </Step>
+  <Step title="Se connecter">
+    Ouvrez `http://localhost:3000` (port configurable via `PORT`) et connectez-vous avec les identifiants admin définis à l'étape 2 (ou les valeurs par défaut `admin` / `changeme123` si vous ne les avez pas changées).
+
+    <Warning>
+      Changez immédiatement le mot de passe admin par défaut depuis `/settings` une fois connecté.
+    </Warning>
   </Step>
 </Steps>
 
-<Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
+## Et maintenant ?
 
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
+<CardGroup cols={2}>
+  <Card title="Publier votre premier projet" icon="book-open" href="/guide-equipe/publier-un-projet">
+    Créez une fiche de projet webcomic et ajoutez-y un chapitre.
+  </Card>
+  <Card title="Comprendre les rôles" icon="shield" href="/guide-equipe/roles-et-permissions">
+    admin, modérateur, lecteur — et la règle d'appartenance à une équipe.
+  </Card>
+  <Card title="Variables d'environnement complètes" icon="settings" href="/developpeurs/deploiement">
+    Toutes les options de déploiement, avec ou sans Docker.
+  </Card>
+  <Card title="Développer sur Komamy" icon="code" href="/developpeurs/architecture">
+    Lancer le serveur de développement (`bun run dev`), architecture du code.
+  </Card>
+</CardGroup>
+
+<Tip>
+  Besoin d'aide ? Consultez la [documentation développeur](/developpeurs/architecture) ou ouvrez une issue sur le [dépôt GitHub](https://github.com/kara0905/komamy).
 </Tip>
