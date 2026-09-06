@@ -1,41 +1,123 @@
 ---
 title: "Rôles et permissions"
-description: "admin, modérateur, lecteur — et la règle d'appartenance à une équipe"
+description: "Le système de permissions granulaires : rôles globaux, rôles d'équipe et dérogations par projet"
 ---
 
-Trois rôles de compte, plus une règle moins visible mais essentielle : **l'appartenance à une équipe donne des droits d'édition sur les projets de cette équipe, quel que soit le rôle du compte.**
+Komamy utilise un système de permissions **granulaires façon Discord** : des rôles portent chacun un ensemble de permissions précises (« flags »), combinables — un utilisateur peut porter plusieurs rôles à la fois, et ses droits sont l'union de tous ses rôles. Trois rôles globaux **intégrés** (Admin, Modérateur, Lecteur) reproduisent exactement le comportement historique du site ; libre à un administrateur d'aller plus loin en créant des rôles personnalisés.
 
-## Les trois rôles
+<Note>
+  Si vous ne créez aucun rôle personnalisé, **rien ne change** par rapport à l'ancien système à trois rôles fixes décrit ci-dessous — c'est le comportement par défaut de toute nouvelle instance.
+</Note>
+
+## Les trois rôles intégrés
 
 | Rôle | Peut faire |
 | --- | --- |
-| **admin** | Tout : utilisateurs, articles, webcomics/chapitres, auteurs, équipes, tags, tickets, paramètres du site. Seul rôle pouvant **supprimer** (projet, chapitre, équipe, auteur, tag, utilisateur, article, ticket). |
-| **modérateur** | Comme `admin`, sauf la gestion des comptes utilisateurs et les paramètres du site. Ne peut pas supprimer la plupart des ressources (réservé à `admin`), à l'exception de ses propres commentaires/messages. |
-| **lecteur** | Rôle par défaut à l'inscription. Lecture, favoris, historique, likes, commentaires, tickets, messagerie — **et gestion des projets d'une équipe dont il est membre** (voir ci-dessous). |
+| **Admin** | Tout : utilisateurs, articles, webcomics/chapitres, auteurs, équipes, tags, tickets, paramètres du site, rôles. Seul rôle pouvant **supprimer** (projet, chapitre, équipe, auteur, tag, utilisateur, article, ticket). |
+| **Modérateur** | Comme Admin, sauf la gestion des comptes utilisateurs, des rôles et les paramètres du site. Ne peut pas supprimer la plupart des ressources (réservé à Admin), à l'exception de ses propres commentaires/messages. |
+| **Lecteur** | Rôle par défaut à l'inscription. Lecture, favoris, historique, likes, commentaires, tickets, messagerie — **et gestion des projets d'une équipe dont il est membre** (voir ci-dessous). |
 | *Visiteur anonyme* | Lecture du contenu publié uniquement. Toute action d'écriture nécessite une connexion. |
+
+<Warning>
+  Les 3 rôles intégrés ne peuvent être **ni renommés ni supprimés**, mais leurs permissions restent modifiables par un administrateur (onglet **Rôles** de l'administration) — un choix qui a un effet immédiat sur tous les comptes portant ce rôle.
+</Warning>
 
 ## La règle qui surprend : membre d'équipe = droit d'édition
 
-Un compte **lecteur** qui est **membre d'une équipe** (même simple membre, pas nécessairement gérant) peut créer et modifier les **projets et chapitres appartenant à cette équipe** — exactement comme un `admin` ou un `modérateur` le ferait. C'est ce qui permet à une équipe de scan/traduction de gérer sa propre série sans que chaque traducteur ait besoin d'un compte modérateur.
+Un compte **Lecteur** qui est **membre d'une équipe** (même simple membre, pas nécessairement gérant) peut créer et modifier les **projets et chapitres appartenant à cette équipe** — exactement comme un Admin ou un Modérateur le ferait. C'est ce qui permet à une équipe de scan/traduction de gérer sa propre série sans que chaque traducteur ait besoin d'un compte modérateur.
 
 ```mermaid
 flowchart TD
-    A["Un utilisateur veut modifier\nle projet X"] --> B{Rôle admin\nou modérateur ?}
+    A["Un utilisateur veut modifier\nle projet X"] --> B{Rôle Admin\nou Modérateur ?}
     B -- oui --> E["✅ Autorisé"]
     B -- non --> C{Membre de l'équipe\npropriétaire du projet X ?}
-    C -- oui --> E
+    C -- oui --> F{Dérogation "deny"\nsur ce projet ?}
     C -- non --> D["❌ Refusé (403)"]
+    F -- non --> E
+    F -- oui --> D
 ```
 
-Cette règle a une implication pratique pour l'onglet **Webcomics** de l'administration : contrairement aux onglets Articles, Auteurs ou Tags (réservés à `admin`/`modérateur`), l'onglet Webcomics est accessible à **tous les rôles connectés**, y compris `lecteur` — la liste affichée est simplement filtrée aux projets que l'utilisateur a le droit de gérer.
+Cette règle a une implication pratique pour l'onglet **Webcomics** de l'administration : contrairement aux onglets Articles, Auteurs ou Tags (réservés au staff), l'onglet Webcomics est accessible à **tous les rôles connectés**, y compris Lecteur — la liste affichée est simplement filtrée aux projets que l'utilisateur a le droit de gérer.
+
+## Le catalogue des rôles globaux
+
+L'onglet **Rôles** de l'administration (réservé à qui détient `MANAGE_ROLES`, porté par le rôle Admin intégré) liste tous les rôles globaux — les 3 intégrés, plus vos éventuels rôles personnalisés — avec le nombre de comptes qui les portent.
+
+<Frame>
+  <img src="/images/guides/admin-01-roles.png" alt="Onglet Rôles de l'administration, avec les rôles intégrés et un rôle personnalisé Traducteur" />
+</Frame>
+
+Créez un rôle personnalisé (ex. « Traducteur ») en cochant exactement les permissions voulues parmi le catalogue ci-dessous, puis assignez-le à un ou plusieurs comptes depuis l'onglet **Utilisateurs** — un compte peut porter plusieurs rôles simultanément (Admin cumule par exemple toujours l'ensemble des permissions).
+
+<AccordionGroup>
+  <Accordion title="Permissions globales disponibles">
+    | Permission | Effet |
+    | --- | --- |
+    | Administrateur | Bypass absolu — passe outre toute dérogation de projet. |
+    | Gérer les utilisateurs | Créer/modifier/suspendre/supprimer des comptes. |
+    | Gérer les rôles et permissions | Créer/modifier des rôles globaux et d'équipe, poser des dérogations de projet, consulter le journal d'audit. |
+    | Gérer les réglages du site | Page d'accueil, projets mis en avant, lien Discord. |
+    | Gérer les tags / Supprimer-fusionner des tags | Catalogue de tags partagé articles/projets. |
+    | Gérer les auteurs / Supprimer des auteurs | Fiches d'auteurs créditables sur les projets. |
+    | Gérer tous les projets/chapitres / Supprimer des projets/chapitres | Indépendamment de l'appartenance à une équipe. |
+    | Créer des œuvres | Créer un nouveau projet webcomic. |
+    | Voir le contenu privé/brouillon | Projets en visibilité privée, chapitres non publiés. |
+    | Publier des articles / Supprimer des articles | Espace Annonces. |
+    | Modérer les commentaires | Masquer/supprimer/restaurer sur tout le site. |
+    | Gérer le blog | Modération du blog communautaire. |
+    | Gérer les tickets / Supprimer des tickets | File de signalements/support. |
+    | Gérer l'import MangaDex | Déclencher un import — jamais délégable à une équipe. |
+    | Gérer le chat de support | Accès à tout canal `SUPPORT` sans y être ajouté. |
+    | Gérer toutes les équipes | Éditer/supprimer n'importe quelle équipe, gérer ses membres. |
+    | Commenter | Publier un commentaire — révocable individuellement (ex. mise en sourdine d'un compte). |
+  </Accordion>
+</AccordionGroup>
+
+## Rôles d'équipe
+
+Chaque équipe a son propre catalogue de rôles — 3 intégrés (Owner, Manager, Member) qui reproduisent le comportement historique, plus d'éventuels rôles personnalisés propres à cette équipe (ex. « Traducteur externe » avec un accès limité). Voir [Gérer une équipe](/guide-equipe/gerer-une-equipe#rôles-personnalisés-dune-équipe) pour la gestion de ces rôles.
+
+<AccordionGroup>
+  <Accordion title="Permissions d'équipe disponibles">
+    | Permission | Effet |
+    | --- | --- |
+    | Éditer la fiche de l'équipe | Avatar, bannière, bio, liens. |
+    | Éditer les projets/chapitres | Créer/modifier les projets et chapitres crédités à l'équipe. |
+    | Publier un chapitre (brouillon → publié) | Distincte de l'édition — peut être retirée sans empêcher de préparer un chapitre. |
+    | Gérer les membres | Ajouter/retirer/changer le rôle d'un membre. |
+    | Gérer les rôles de l'équipe | Créer/modifier les rôles personnalisés de l'équipe. |
+    | Supprimer l'équipe | Réservée en pratique au Propriétaire (ou au staff). |
+  </Accordion>
+</AccordionGroup>
 
 <Note>
-  Nuance : la distinction Membre/Gérant/Propriétaire au sein d'une équipe (voir [Gérer une équipe](/guide-equipe/gerer-une-equipe)) n'a **aucun effet** sur ce droit d'édition — un simple membre a exactement les mêmes droits qu'un gérant sur les projets de son équipe. Seule la **suppression** reste réservée à `admin`, même pour un membre d'équipe.
+  Un compte staff (détenant la permission globale correspondante) a toujours au moins les mêmes droits qu'un membre sur n'importe quelle équipe, sans avoir besoin d'y être ajouté.
 </Note>
 
-## Récapitulatif par action
+## Dérogations de permissions par projet
 
-| Action | admin | modérateur | lecteur (hors équipe) | lecteur (membre de l'équipe) |
+Dernière couche, la plus précise : un administrateur peut poser une **dérogation** (« override ») pour un utilisateur sur **un projet précis**, par-dessus son rôle d'équipe et son statut staff éventuel. Deux listes de flags d'équipe :
+
+- **Allow** : accorde une permission que l'utilisateur n'aurait pas autrement sur ce projet (ex. laisser un contributeur externe publier un chapitre sans l'ajouter formellement à l'équipe).
+- **Deny** : retire une permission — **`deny` l'emporte sur `allow`** en cas de chevauchement, et peut bloquer même un modérateur/admin. Seule la permission **Administrateur** reste toujours prioritaire, sans exception.
+
+<Frame>
+  <img src="/images/guides/admin-05-project-overrides.png" alt="Onglet Dérogations de l'éditeur de projet, avec une dérogation posée sur un utilisateur" />
+</Frame>
+
+Accessible depuis l'onglet **Dérogations** de l'éditeur de projet (`/admin/webcomics/:slug`) — réservé à `MANAGE_ROLES`, **volontairement non délégable aux équipes**, même à leur propriétaire : poser une dérogation reste une action de modération globale.
+
+## Journal d'audit
+
+Chaque action sensible liée aux comptes et aux permissions (suspension, changement de rôle, révocation de session, activation/désactivation de la 2FA, pose d'une dérogation...) est tracée dans l'onglet **Journal d'audit** de l'administration — réservé au rôle Administrateur strictement (pas seulement `MANAGE_USERS`/`MANAGE_ROLES`), pour que le contrôle des actions sensibles ne soit jamais consultable, ni contournable, par celui qui les effectue.
+
+<Frame>
+  <img src="/images/guides/admin-02-audit-log.png" alt="Journal d'audit listant les actions sensibles récentes" />
+</Frame>
+
+## Récapitulatif par action (rôles intégrés)
+
+| Action | Admin | Modérateur | Lecteur (hors équipe) | Lecteur (membre de l'équipe) |
 | --- | --- | --- | --- | --- |
 | Créer/éditer un article | ✅ | ✅ | ❌ | ❌ |
 | Supprimer un article | ✅ | ❌ | ❌ | ❌ |
@@ -43,15 +125,17 @@ Cette règle a une implication pratique pour l'onglet **Webcomics** de l'adminis
 | Ajouter un chapitre | ✅ | ✅ | ❌ | ✅ (projets de son équipe) |
 | Supprimer un projet/chapitre | ✅ | ❌ | ❌ | ❌ |
 | Gérer les utilisateurs | ✅ | ❌ | ❌ | ❌ |
+| Gérer les rôles et dérogations | ✅ | ❌ | ❌ | ❌ |
 | Gérer les équipes/auteurs/tags | ✅ | ✅ | ❌ | ✅ (sa propre équipe) |
 | Modérer les commentaires | ✅ | ✅ | ❌ | ❌ |
 | Traiter les tickets | ✅ | ✅ | ❌ | ❌ |
 | Paramètres du site | ✅ | ❌ | ❌ | ❌ |
 | Importer des chapitres depuis MangaDex | ✅ | ✅ | ❌ | ❌ (même gérant de l'équipe) |
 | Définir le groupe MangaDex d'une équipe | ✅ | ✅ | ❌ | ❌ (même gérant de l'équipe) |
+| Consulter le journal d'audit | ✅ | ❌ | ❌ | ❌ |
 
 <Warning>
-  L'import MangaDex et le champ « groupe MangaDex » d'une équipe sont volontairement **hors** de la règle « membre d'équipe = droit d'édition » ci-dessus : un membre d'équipe (même gérant) n'y a aucun accès, réservé à `admin`/`modérateur`. Voir [Importer depuis MangaDex](/guide-equipe/importer-depuis-mangadex).
+  L'import MangaDex et le champ « groupe MangaDex » d'une équipe sont volontairement **hors** de la règle « membre d'équipe = droit d'édition » ci-dessus : un membre d'équipe (même gérant) n'y a aucun accès, réservé au staff. Voir [Importer depuis MangaDex](/guide-equipe/importer-depuis-mangadex).
 </Warning>
 
-Pour le détail route par route (quel contrôle d'accès s'applique où), voir la [référence API](/developpeurs/api-reference).
+Pour le détail route par route (quelle permission s'applique où), voir la [référence API](/developpeurs/api-reference).

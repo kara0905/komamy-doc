@@ -1,19 +1,53 @@
 ---
 title: "Compte et profil"
-description: "Inscription, connexion, passkeys, profil public et préférences"
+description: "Inscription, connexion, sécurité du compte et profil public"
 ---
 
 ## Créer un compte
 
-Depuis la page **Inscription** (`/register`), renseignez un pseudo (3-32 caractères, lettres/chiffres/`_`/`-`) et un mot de passe (6 caractères minimum). Le compte créé a automatiquement le rôle **lecteur** — c'est le rôle par défaut, celui de tout nouveau compte.
+Depuis la page **Inscription** (`/register`), renseignez un pseudo (3-32 caractères, lettres/chiffres/`_`/`-`) et un mot de passe (**8 caractères minimum**). Le compte créé a automatiquement le rôle **lecteur** — c'est le rôle par défaut, celui de tout nouveau compte.
 
 <Note>
-  Il n'y a pas de vérification par e-mail : l'inscription est immédiate. Komamy ne demande d'ailleurs pas d'adresse e-mail à l'inscription.
+  Il n'y a pas de vérification par e-mail : l'inscription est immédiate. Komamy ne demande d'ailleurs pas d'adresse e-mail, à l'inscription ou plus tard — voir [Vos données](/guide-lecteur/vos-donnees) pour ce que ça implique en cas de mot de passe oublié.
 </Note>
 
 ## Se connecter
 
-Connexion classique par pseudo/mot de passe (`/login`), ou par **passkey** (voir ci-dessous). Une fois connecté, un cookie de session (httpOnly, signé, valable 7 jours) est posé automatiquement — il n'y a rien à gérer manuellement, y compris entre deux onglets ou après un rechargement de page. Passé les 7 jours, il suffit de se reconnecter (pas de renouvellement automatique de session).
+<Frame>
+  <img src="/images/guides/login-01-vide.png" alt="Page de connexion Komamy" />
+</Frame>
+
+Connexion classique par pseudo/mot de passe (`/login`), ou par **passkey** (voir ci-dessous). Une fois connecté, un cookie de session (httpOnly, signé) est posé automatiquement — il n'y a rien à gérer manuellement, y compris entre deux onglets ou après un rechargement de page.
+
+<Tip>
+  Chaque connexion crée une **session** distincte, visible et révocable individuellement depuis `/settings` — voir [Sessions actives](#sessions-actives-vos-appareils-connectés) plus bas.
+</Tip>
+
+## Sécurité renforcée du mot de passe
+
+Votre mot de passe est haché avec **argon2id** et vérifié à la création/au changement contre la base **Have I Been Pwned** (norme NIST SP 800-63B-4) : un mot de passe déjà apparu dans une fuite de données connue est refusé, même s'il respecte la longueur minimale. Seul le préfixe de son empreinte est transmis à ce service tiers (méthode k-anonymat) — votre mot de passe en clair ne quitte jamais le serveur.
+
+## Authentification à deux facteurs (2FA)
+
+En plus du mot de passe, activez un second facteur par code à 6 chiffres (application type Google Authenticator, Authy...) — il s'applique uniquement à la connexion par mot de passe, pas aux passkeys.
+
+<Steps>
+  <Step title="Activer la 2FA">
+    Depuis `/settings` → **Sécurité**, cliquez sur **Activer** dans la section 2FA, confirmez avec votre mot de passe actuel, puis scannez le QR code affiché avec votre application d'authentification.
+  </Step>
+  <Step title="Confirmer">
+    Saisissez le premier code généré par l'application pour valider l'enrôlement — la 2FA n'est active qu'une fois ce code vérifié.
+  </Step>
+  <Step title="Se connecter ensuite">
+    À la prochaine connexion par mot de passe, une seconde étape vous demande le code à 6 chiffres avant d'ouvrir la session.
+
+    <Frame>
+      <img src="/images/guides/login-03-totp.png" alt="Étape de vérification du code à deux facteurs après le mot de passe" />
+    </Frame>
+  </Step>
+</Steps>
+
+Désactivez la 2FA à tout moment depuis les mêmes réglages (mot de passe actuel requis).
 
 ## Connexion sans mot de passe (passkeys)
 
@@ -24,22 +58,52 @@ Komamy prend en charge les **passkeys** (WebAuthn) — clé de sécurité matér
     Depuis `/settings`, section **Passkeys**, cliquez sur **Ajouter une passkey**. Le navigateur vous guide (biométrie, code PIN, clé physique...). Donnez-lui un nom pour la retrouver plus tard dans la liste.
   </Step>
   <Step title="Se connecter avec">
-    Sur la page de connexion, choisissez l'option passkey — c'est un flux **« discoverable »** : le navigateur propose directement les passkeys enregistrées pour le site, pas besoin de saisir votre pseudo au préalable.
+    Sur la page de connexion, choisissez **Se connecter avec une passkey** — c'est un flux **« discoverable »** : le navigateur propose directement les passkeys enregistrées pour le site, pas besoin de saisir votre pseudo au préalable.
   </Step>
   <Step title="Gérer vos passkeys">
     Renommez ou supprimez une passkey à tout moment depuis `/settings`. Supprimer votre dernière passkey ne bloque rien : votre mot de passe reste toujours valide.
   </Step>
 </Steps>
 
+## Sessions actives (vos appareils connectés)
+
+`/settings` → **Sécurité** liste chaque appareil/navigateur actuellement connecté à votre compte (nom déduit du navigateur, date de connexion, dernière activité) — l'appareil ayant servi à charger la page est repéré comme « Cet appareil ». Déconnectez un appareil précis que vous ne reconnaissez pas, ou **Déconnecter les autres appareils** en un clic pour tout révoquer sauf votre session actuelle.
+
+<Frame>
+  <img src="/images/guides/settings-01-securite.png" alt="Onglet Sécurité des réglages : mot de passe, passkeys, 2FA, sessions actives, codes de récupération" />
+</Frame>
+
+<Note>
+  Changer votre mot de passe déconnecte automatiquement tous les autres appareils, par sécurité.
+</Note>
+
+## Codes de récupération
+
+Komamy ne collectant aucune adresse e-mail, il n'existe pas de « mot de passe oublié » classique par lien envoyé par courriel. À la place, générez un lot de **10 codes de récupération à usage unique** depuis `/settings` : chacun permet de définir un nouveau mot de passe sans connaître l'ancien.
+
+<Frame>
+  <img src="/images/guides/settings-02-codes-recuperation.png" alt="Fenêtre affichant les codes de récupération générés, à noter immédiatement" />
+</Frame>
+
+<Warning>
+  Les codes ne sont affichés **qu'une seule fois**, au moment de leur génération — notez-les ou téléchargez-les immédiatement. Régénérer un lot invalide entièrement l'ancien.
+</Warning>
+
+Un code perdu ou votre mot de passe oublié ? Le lien **Mot de passe oublié ?** de la page de connexion mène au formulaire de récupération : pseudo + code + nouveau mot de passe.
+
+<Frame>
+  <img src="/images/guides/recuperation-compte.png" alt="Formulaire de récupération de compte par code" />
+</Frame>
+
 ## Profil public
 
-Chaque compte a une page profil publique (`/users/:id`) affichant : bio, commentaires postés, favoris, succès débloqués, équipes dont le compte est membre, et collections (les collections privées ne sont visibles que par leur propriétaire).
+Chaque compte a une page profil publique (`/users/:id`) affichant : bio, niveau/badges, commentaires postés, favoris, succès débloqués, équipes dont le compte est membre, et collections (les collections privées ne sont visibles que par leur propriétaire).
 
-Depuis `/settings`, vous pouvez :
+Depuis `/settings`, vous pouvez aussi :
 
 - Modifier votre **bio** (2000 caractères max).
 - Uploader un **avatar** et une **bannière de profil**.
-- Changer votre **mot de passe** (mot de passe actuel requis).
+- Changer votre **pseudo** (mot de passe actuel requis — ré-ouvre votre session avec le nouveau pseudo).
 
 ## Préférences visuelles
 

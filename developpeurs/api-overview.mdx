@@ -25,34 +25,58 @@ Toutes les routes sont préfixées par **`/api`**. Une spec OpenAPI générée (
 
 ## Authentification
 
-L'authentification repose sur un cookie httpOnly `komamy_session` (JWT signé, 7 jours). Il est posé automatiquement par `/auth/login` et `/auth/register`, et doit être transmis par le client sur toutes les requêtes (`credentials: "include"` en fetch).
+L'authentification repose sur un cookie httpOnly `komamy_session` (JWT signé). Il est posé automatiquement par `/auth/login` et `/auth/register`, et doit être transmis par le client sur toutes les requêtes (`credentials: "include"` en fetch).
 
 <Steps>
   <Step title="S'inscrire ou se connecter">
     `POST /api/auth/register` ou `POST /api/auth/login` avec `{ username, password }`.
   </Step>
+  <Step title="Étape 2FA éventuelle">
+    Si la 2FA TOTP est activée sur le compte, `POST /auth/login` répond `{ requiresTotp: true }` (aucune session ouverte) plutôt que le cookie — voir [2FA (TOTP)](#2fa-totp) ci-dessous.
+  </Step>
   <Step title="Cookie posé automatiquement">
     Le serveur répond avec un cookie `komamy_session` — rien à faire manuellement côté client une fois connecté.
   </Step>
   <Step title="Requêtes suivantes">
-    `GET /api/auth/me` renvoie le profil courant, ou `401` si aucune session valide. Il n'y a pas de refresh token : passé 7 jours, l'utilisateur doit simplement se reconnecter.
+    `GET /api/auth/me` renvoie le profil courant, ou `401` si aucune session valide.
   </Step>
 </Steps>
 
-### Trois niveaux d'accès
+### Le modèle de session
+
+Le JWT embarque un claim `sid` qui référence une ligne de la table `sessions` (voir la section sécurité du compte dans [Base de données](/developpeurs/base-de-donnees#tables-par-domaine)) : sa validité réelle dépend de cette ligne (`revokedAt`/`expiresAt`), pas seulement de la signature cryptographique du JWT. C'est ce qui permet de **révoquer une session précise** (`DELETE /auth/sessions/:id`) avant l'expiration du token — utile en cas d'appareil volé ou de changement de mot de passe (qui révoque automatiquement toutes les autres sessions).
+
+### Niveaux d'accès
 
 | Niveau | Ce que ça veut dire |
 | --- | --- |
 | **Public** | Aucun cookie requis. |
 | **Connecté** | Cookie de session valide requis (`requireAuth`) — peu importe le rôle. |
-| **Rôle précis** | `requireRole("admin", "moderateur")` par exemple — 403 si le rôle du compte ne correspond pas. |
-| **Permission custom** | Logique au cas par cas — ex. `canManageProject` (staff, ou membre de l'équipe créditée), `assertIsTeamMember`/`assertCanEditTeam`/`assertCanManageMembers`/`assertCanDeleteTeam` (staff, ou membre/gérant/propriétaire selon l'action). |
+| **Rôle précis** | `requireRole("admin", "moderateur")` — legacy, vérifie directement `users.role`. Encore utilisé sur certaines routes non migrées (ex. création d'équipe). |
+| **Permission granulaire** | `requirePermission("MANAGE_AUTHORS", ...)` — vérifie les bits résolus depuis `user_roles`/`roles` (voir [Rôles et permissions](/guide-equipe/roles-et-permissions)), avec bypass si `ADMINISTRATOR` est posé. Remplace progressivement `requireRole` route par route. |
+| **Permission custom** | Logique au cas par cas — ex. `canManageProject` (staff, ou membre de l'équipe créditée, avec dérogation de projet en dernière couche), `assertIsTeamMember`/`assertCanEditTeam`/`assertCanManageMembers`/`assertCanDeleteTeam`. |
+
+<Warning>
+  `requireRole` et `requirePermission` **coexistent** pendant la migration route par route vers le système de permissions granulaires — ne supposez pas qu'une route utilise l'un ou l'autre sans vérifier, voir la [Référence API](/developpeurs/api-reference).
+</Warning>
 
 Voir [Rôles et permissions](/guide-equipe/roles-et-permissions) pour ce que chaque rôle peut faire, y compris la règle d'appartenance à une équipe.
 
+### Mot de passe
+
+Haché avec **argon2id** (`Bun.password`, natif — pas de dépendance tierce), 8 caractères minimum, et vérifié à l'inscription/au changement contre l'API **Have I Been Pwned** (modèle k-anonymat : seuls les 5 premiers caractères hex du SHA-1 sont transmis) — un mot de passe déjà compromis est refusé (`ValidationError`). Échoue « ouvert » (n'importe quelle erreur réseau vers l'API tierce n'empêche jamais l'inscription) : voir `db/lib/passwordBreachCheck.ts`.
+
+### 2FA (TOTP)
+
+Routes sous `/auth/totp` (voir [Référence API](/developpeurs/api-reference)) : statut, enrôlement (`setup` → QR code + secret, puis `confirm` avec le premier code), désactivation. Le secret d'un enrôlement non confirmé vit dans un cookie signé de 5 minutes, jamais en base tant qu'il n'est pas validé. La vérification à la connexion (étape 2) est une route distincte, `POST /auth/totp/login-verify`, qui consomme un cookie temporaire posé par `/auth/login`.
+
+### Récupération de compte sans e-mail
+
+Komamy ne collecte aucune adresse e-mail : `/auth/recovery` expose un lot de 10 codes à usage unique (affichés une seule fois à la génération, hashés comme un mot de passe) permettant de redéfinir le mot de passe sans le connaître (`POST /auth/recovery/redeem`, public, fortement rate-limité — au moins aussi sensible qu'un login).
+
 ### Passkeys (WebAuthn)
 
-En complément du mot de passe (jamais en remplacement), basé sur `@simplewebauthn/server`/`@simplewebauthn/browser`. Flux **discoverable** : la connexion ne demande pas de pseudo, le navigateur propose directement les passkeys enregistrées pour le site. Le RP ID et l'origine attendue sont dérivés dynamiquement de la requête (respecte un reverse proxy) — aucune configuration supplémentaire nécessaire pour l'opérateur self-hosted.
+En complément du mot de passe (jamais en remplacement), basé sur `@simplewebauthn/server`/`@simplewebauthn/browser`. Flux **discoverable** : la connexion ne demande pas de pseudo, le navigateur propose directement les passkeys enregistrées pour le site. Le RP ID et l'origine attendue sont dérivés dynamiquement de la requête (respecte un reverse proxy) — aucune configuration supplémentaire nécessaire pour l'opérateur self-hosted. La 2FA TOTP ne s'applique qu'après une connexion par mot de passe, jamais après une connexion par passkey.
 
 ## Rate limiting
 
@@ -70,6 +94,9 @@ Certaines routes sensibles (auth, uploads, création de contenu communautaire, r
 | `GET /users/search` | 1 min / compte ou IP | 60 |
 | `POST /chat/*/messages` | 1 min / compte ou IP | 30 |
 | `DELETE /me/account` | 15 min / compte ou IP | 5 |
+| `POST /auth/recovery/redeem` | 15 min / IP et / compte visé | 20 / 8 |
+| Gestion 2FA/sessions/codes (`/auth/totp/*`, `/auth/sessions/*`, `POST /auth/recovery`) | 1 min / compte ou IP | 10 |
+| `POST /tickets` (menu Support) | 1 min / compte ou IP | 20 |
 | `/admin/mangadex/import` | 1 min / compte ou IP | 5 |
 | Outils d'image (`/tools/*`) | 1 min / compte ou IP | 5 (3 pour `/tools/upscale`) |
 

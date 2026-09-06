@@ -1,24 +1,44 @@
 ---
-title: "Signaler un problème"
-description: "Ouvrir et suivre un ticket de signalement"
+title: "Support et signalements"
+description: "Contacter le staff : bug, compte, série, suggestion ou signalement"
 ---
 
-Un **ticket** permet de signaler un problème à l'équipe qui gère le projet et au staff du site — un bug d'affichage, une erreur sur un chapitre (page manquante, mauvais ordre...), ou un commentaire inapproprié.
+Le menu **Support**, accessible depuis la barre latérale (icône bouée), centralise toute demande adressée au staff — pas seulement les signalements de bug.
 
 <Steps>
-  <Step title="Ouvrir un signalement">
-    Depuis la fiche d'un projet (ou directement depuis un commentaire, via son menu, pour signaler ce commentaire précis plutôt que le projet entier), cliquez sur **Signaler**. Renseignez un titre, une description, et une priorité (basse/moyenne/haute/critique — moyenne par défaut).
+  <Step title="Choisir un sujet">
+    Cliquer sur **Support** ouvre une sélection de sujets, chacun avec son propre formulaire adapté :
+
+    <Frame>
+      <img src="/images/guides/support-01-sujets.png" alt="Fenêtre Support : sélection du sujet de la demande" />
+    </Frame>
+
+    | Sujet | Usage |
+    | --- | --- |
+    | **Signaler un bug technique** | Affichage cassé, erreur, fonctionnalité qui ne marche pas. |
+    | **Question sur mon compte** | Connexion, mot de passe, paramètres, données personnelles... |
+    | **Proposer ou suivre une série** | Publier une série, rejoindre une équipe, signaler un souci sur une série existante — seul sujet avec un sélecteur de série. |
+    | **Suggestion d'amélioration** | Une idée pour améliorer le site. |
+    | **Autre** | Toute autre demande. |
+  </Step>
+  <Step title="Remplir le formulaire">
+    Le formulaire s'adapte au sujet choisi (libellés, exemples de placeholder). Un champ **Capture d'écran** optionnel permet de joindre une image directement au ticket.
+
+    <Frame>
+      <img src="/images/guides/support-02-formulaire.png" alt="Formulaire de signalement de bug avec pièce jointe optionnelle" />
+    </Frame>
   </Step>
   <Step title="Suivre la conversation">
-    Chaque ticket ouvre automatiquement un canal de **messagerie** dédié (type Support) avec le staff — retrouvez-le dans `/chat` ou depuis **Mes signalements** sur votre profil.
-  </Step>
-  <Step title="Recevoir une mise à jour">
-    Vous êtes notifié à chaque changement de statut de votre ticket (Ouvert → En cours → En attente → Résolu → Fermé).
+    Chaque demande ouvre automatiquement un canal de **messagerie** dédié (type Support) avec le staff — retrouvez-le dans `/chat`. Vous êtes notifié à chaque changement de statut (Ouvert → En cours → En attente → Résolu → Fermé).
   </Step>
 </Steps>
 
 <Note>
-  Un compte connecté est requis pour ouvrir un ticket — cette fonctionnalité n'est pas accessible aux visiteurs anonymes.
+  Un compte connecté est requis pour ouvrir une demande de support — cette fonctionnalité n'est pas accessible aux visiteurs anonymes. Les publications sont limitées en fréquence (anti-spam).
 </Note>
+
+## Signaler un commentaire ou un projet précis
+
+En complément du menu Support général, un signalement peut aussi être ouvert **directement depuis un projet ou un commentaire** (menu contextuel « Signaler ») — pratique pour cibler précisément le contenu concerné plutôt que de le décrire dans un formulaire général. Ce chemin utilise le même mécanisme de ticket, avec le projet (et éventuellement le commentaire) déjà rattaché.
 
 Pour la modération des signalements côté équipe/staff, voir [Administration](/guide-equipe/administration#tickets).

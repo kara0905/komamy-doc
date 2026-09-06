@@ -133,7 +133,7 @@ erDiagram
     | `comment_reactions` | Likes sur un commentaire de projet, unique par (commentaire, utilisateur). |
     | `project_comment_edits` | Historique des versions d'un commentaire édité. |
     | `article_comments`, `article_comment_reactions`, `article_comment_edits` | Équivalents pour les commentaires sur un article. |
-    | `tickets` | Signalements. `projectId` nullable (`onDelete: set null`). `commentId` (nullable) permet de signaler un commentaire précis. `staffId` = agent assigné. Ouvre automatiquement un canal `SUPPORT`. |
+    | `tickets` | Demandes de support/signalements. `topic` ∈ `BUG \| ACCOUNT \| SERIES \| SUGGESTION \| OTHER` (déf. `OTHER`) — seul `SERIES` a un `projectId` pertinent côté formulaire. `attachmentUrl` (nullable) porte une capture d'écran jointe. `projectId` nullable (`onDelete: set null`). `commentId` (nullable) permet de signaler un commentaire précis. `staffId` = agent assigné. Ouvre automatiquement un canal `SUPPORT`. |
     | `chat_conversations` / `chat_participants` / `chat_messages` | Messagerie : conversations `DIRECT` (1:1), `GROUP` (équipe) ou `SUPPORT` (ticket). Suppression de message toujours douce (`deletedAt`). |
   </Accordion>
   <Accordion title="Collections" icon="folder">
@@ -156,6 +156,29 @@ erDiagram
     | Table | Rôle |
     | --- | --- |
     | `site_config` | Clé/valeur JSON (`key` en PK). Sert entre autres à stocker les projets mis en avant (`featured_project_ids`) et les blocs de la page d'accueil. |
+  </Accordion>
+  <Accordion title="Rôles et permissions granulaires" icon="shield-check">
+    Système façon Discord : des rôles portent un bitfield de permissions (`bigint`), combinables par utilisateur/membre — voir `shared/permissions.ts` pour le catalogue de flags (`GLOBAL_FLAGS`/`TEAM_FLAGS`) et [Rôles et permissions](/guide-equipe/roles-et-permissions) côté fonctionnel.
+
+    | Table | Rôle |
+    | --- | --- |
+    | `roles` | Rôles globaux (site entier). 3 lignes intégrées (`is_builtin = true` : Admin/Modérateur/Lecteur), protégées de la suppression/du renommage — leurs bits restent modifiables. `permissions` est un `bigint` (bits combinés par OR). |
+    | `user_roles` | Jointure `users` ↔ `roles` — un utilisateur peut porter plusieurs rôles, ses droits sont l'union. |
+    | `team_roles` | Rôles propres à une équipe. 3 lignes intégrées par équipe (Owner/Manager/Member), semées à la création de l'équipe. |
+    | `team_member_roles` | Jointure `team_members` ↔ `team_roles` (liée à `team_members.id`, pas directement `teamId`/`userId` — le départ d'un membre fait cascader la suppression de ses rôles). |
+    | `project_member_overrides` | Dérogation `allow`/`deny` (bitfields d'équipe) pour un utilisateur sur un projet précis — dernière couche de résolution, `deny` gagne sur `allow`. Unique par (`projectId`, `userId`). |
+
+    <Warning>
+      `users.role` et `team_members.role` (les anciens enums simples) **coexistent** avec ce système pendant la période de transition — toute écriture passe par une double-écriture (`db/services/users.services.ts`/`teams.services.ts`) pour garder les deux synchronisés. Une migration de données (`drizzle/20260906083515_crazy_the_hand/migration.sql`) construit `roles`/`user_roles`/`team_roles`/`team_member_roles` à partir des données existantes au moment où elle s'exécute — voir la mise en garde sur le bootstrap admin dans [Contribuer](/developpeurs/contribuer#points-dattention-du-système-de-permissions).
+    </Warning>
+  </Accordion>
+  <Accordion title="Sécurité du compte : sessions, 2FA, récupération, audit" icon="lock">
+    | Table | Rôle |
+    | --- | --- |
+    | `sessions` | Une ligne par session émise (mot de passe, passkey ou TOTP). Le JWT porte `id` comme claim `sid` : sa validité dépend de cette ligne (`revokedAt`/`expiresAt`), pas seulement de la signature — c'est ce qui permet de révoquer un appareil précis avant l'expiration du token. `deviceName` dérivé du user-agent, jamais d'IP stockée. |
+    | `user_totp` | L'existence d'une ligne pour un utilisateur signifie « 2FA activée » — pas d'état « en attente » en base, le secret d'un enrôlement non confirmé vit dans un cookie signé temporaire. `secret` stocké en clair (base32), comme le secret JWT : doit rester réversible côté serveur. |
+    | `recovery_codes` | Lot de codes à usage unique par utilisateur, hashés comme un mot de passe. Régénérer un lot supprime entièrement l'ancien. Un code consommé reste en base (`usedAt` renseigné) plutôt que d'être supprimé, pour l'audit. |
+    | `audit_log` | Historique des actions sensibles (voir `shared/auditLog.ts` pour le catalogue fermé d'actions). `actorUserId`/`targetUserId` passent à `null` (`ON DELETE SET NULL`) si le compte est supprimé — l'entrée elle-même n'est jamais effacée, `metadata` conserve le pseudo au moment des faits. |
   </Accordion>
 </AccordionGroup>
 

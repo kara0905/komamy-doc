@@ -13,15 +13,42 @@ description: "Détail route par route, organisé par domaine"
 
 | Méthode | Route | Accès | Description |
 | --- | --- | --- | --- |
-| POST | `/auth/register` | Public | Crée un compte (`lecteur`). Body : `{ username, password }` (username 3-32 `[a-zA-Z0-9_-]`, password ≥ 6). |
-| POST | `/auth/login` | Public | Connexion. Body : `{ username, password }`. Pose le cookie de session. |
-| POST | `/auth/logout` | Public | Supprime le cookie de session. |
+| POST | `/auth/register` | Public | Crée un compte (`lecteur`). Body : `{ username, password }` (username 3-32 `[a-zA-Z0-9_-]`, password ≥ 8, rejeté si compromis — voir [Vue d'ensemble](/developpeurs/api-overview#mot-de-passe)). |
+| POST | `/auth/login` | Public | Connexion. Body : `{ username, password }`. Pose le cookie de session, ou `{ requiresTotp: true }` si la 2FA est activée. |
+| POST | `/auth/totp/login-verify` | Public | Étape 2 après un login mot de passe avec 2FA. Body : `{ code }`. Consomme le cookie temporaire posé par `/auth/login`. Pose le cookie de session. |
+| POST | `/auth/logout` | Public | Révoque la session courante et supprime le cookie. Idempotent. |
 | GET | `/auth/me` | Connecté | Profil de l'utilisateur courant. |
 | POST | `/auth/avatar` | Connecté | Upload d'avatar. `multipart/form-data`, champ `avatar`. |
 | POST | `/auth/banner` | Connecté | Upload de bannière de profil. `multipart/form-data`, champ `banner`. |
-| POST | `/auth/change-password` | Connecté | Body : `{ currentPassword, newPassword }` (newPassword ≥ 6). |
+| POST | `/auth/change-password` | Connecté | Body : `{ currentPassword, newPassword }` (newPassword ≥ 8). Révoque toutes les autres sessions. |
+| POST | `/auth/change-username` | Connecté | Body : `{ newUsername, password }`. Ré-émet le cookie de session avec le nouveau pseudo. |
 
 **`PublicUser`** : `{ id, username, role, status, avatarUrl, bannerImageUrl, bio, createdAt, lastLoginAt }`.
+
+### `/auth/totp` — 2FA
+
+| Méthode | Route | Accès | Description |
+| --- | --- | --- | --- |
+| GET | `/auth/totp` | Connecté | Statut de la 2FA. |
+| POST | `/auth/totp/setup` | Connecté | Confirmé par le mot de passe. Génère un secret (pas encore actif), porté par un cookie signé 5 min. Réponse : `{ secret, otpauthUrl, qrCodeDataUrl }`. |
+| POST | `/auth/totp/confirm` | Connecté | Body : `{ code }`. Consomme le cookie posé par `/setup` et active la 2FA. |
+| DELETE | `/auth/totp` | Connecté | Confirmé par le mot de passe. Désactive la 2FA. |
+
+### `/auth/sessions` — appareils connectés
+
+| Méthode | Route | Accès | Description |
+| --- | --- | --- | --- |
+| GET | `/auth/sessions` | Connecté | `{ sessions: PublicSession[] }`. La session ayant servi à la requête porte `current: true`. |
+| DELETE | `/auth/sessions/:id` | Connecté | Révoque une session précise. 404 si elle n'appartient pas à l'appelant. |
+| POST | `/auth/sessions/revoke-others` | Connecté | Révoque toutes les sessions sauf la courante. |
+
+### `/auth/recovery` — récupération sans e-mail
+
+| Méthode | Route | Accès | Description |
+| --- | --- | --- | --- |
+| POST | `/auth/recovery/redeem` | Public, rate-limité | Body : `{ username, code, newPassword }`. Échange un code contre un nouveau mot de passe. |
+| GET | `/auth/recovery` | Connecté | `{ remaining }` — nombre de codes non utilisés restants. |
+| POST | `/auth/recovery` | Connecté | Confirmé par le mot de passe. Régénère un lot de 10 codes (invalide l'ancien). Réponse : `{ codes: string[] }`, affichés **une seule fois**. |
 
 ### `/auth/passkeys`
 
@@ -234,6 +261,16 @@ Middleware global sur tout `GET` : les chapitres `DRAFT` dont `scheduledPublishA
 
 </Accordion>
 
+<Accordion title="/tickets — Support" icon="life-buoy">
+
+Création de ticket **non rattachée à un projet** (menu Support : bug, question de compte, proposition/suivi de série, suggestion, autre) — distincte de `POST /projects/:slug/tickets` (signalement d'un projet ou d'un commentaire précis, voir plus haut).
+
+| Méthode | Route | Accès | Description |
+| --- | --- | --- | --- |
+| POST | `/tickets` | Connecté, rate-limité (20/min) | Body : `{ title, description, topic, priority?, projectId? }` (`topic` ∈ `bug\|account\|series\|suggestion\|other`, `projectId` pertinent seulement pour `series`). Accepte aussi `multipart/form-data` avec en plus un fichier `attachment` (capture d'écran). Ouvre automatiquement un canal `SUPPORT`. Réponse : `{ ticket, conversationId }`. |
+
+</Accordion>
+
 <Accordion title="/chat — Messagerie" icon="message-square">
 
 Toutes les routes nécessitent d'être connecté. Trois types : `DIRECT` (1:1), `GROUP` (équipe), `SUPPORT` (ticket).
@@ -256,15 +293,36 @@ Toutes les routes nécessitent d'être connecté. Trois types : `DIRECT` (1:1), 
 
 <Accordion title="/admin — Utilisateurs, tags, tickets, paramètres" icon="settings">
 
-### `/admin/users` (admin uniquement)
+### `/admin/users` (permission `MANAGE_USERS`, portée par le rôle Admin intégré)
+
+| Méthode | Route | Accès | Description |
+| --- | --- | --- | --- |
+| GET | `/admin/users/staff` | `MANAGE_USERS` | Liste non paginée admin+modérateur. |
+| GET | `/admin/users` | `MANAGE_USERS` | Paginée. Query `search`, `page`, `pageSize`. |
+| POST | `/admin/users` | `MANAGE_USERS` | Body : `{ username, password, role? }`. |
+| PUT | `/admin/users/:id` | `MANAGE_USERS` | Body : `{ role?, password?, avatarUrl?, status? }` (`status` jamais `DELETED` par cette route). |
+| GET | `/admin/users/:id/roles` | `MANAGE_ROLES` | `{ roleIds: number[] }` — rôles globaux portés par l'utilisateur. |
+| PUT | `/admin/users/:id/roles` | `MANAGE_ROLES` | Body : `{ roleIds: number[] }`. **Remplace intégralement** le jeu de rôles (pas un ajout/retrait unitaire). |
+| DELETE | `/admin/users/:id` | `MANAGE_USERS` | Impossible sur son propre compte. |
+
+### `/admin/roles` (permission `MANAGE_ROLES`)
+
+Catalogue des rôles globaux (voir [Rôles et permissions](/guide-equipe/roles-et-permissions)). Les 3 rôles intégrés (Admin/Modérateur/Lecteur) ne peuvent être ni renommés ni supprimés — seuls leurs bits sont modifiables.
 
 | Méthode | Route | Description |
 | --- | --- | --- |
-| GET | `/admin/users/staff` | Liste non paginée admin+modérateur. |
-| GET | `/admin/users` | Paginée. Query `search`, `page`, `pageSize`. |
-| POST | `/admin/users` | Body : `{ username, password, role? }`. |
-| PUT | `/admin/users/:id` | Body : `{ role?, password?, avatarUrl?, status? }`. |
-| DELETE | `/admin/users/:id` | Impossible sur son propre compte. |
+| GET | `/admin/roles` | Tous les rôles globaux, avec leur nombre de porteurs. |
+| POST | `/admin/roles` | Body : `{ name, color?, permissions: GlobalFlag[] }`. |
+| PUT | `/admin/roles/:id` | Même forme. 403 si `name` fourni pour un rôle intégré. |
+| DELETE | `/admin/roles/:id` | Refusé pour un rôle intégré. Retire le rôle de tous ses porteurs (cascade). |
+
+### `/admin/audit-log` (rôle Administrateur strictement — pas `MANAGE_USERS`/`MANAGE_ROLES`)
+
+| Méthode | Route | Description |
+| --- | --- | --- |
+| GET | `/admin/audit-log` | Paginé, le plus récent en premier. Query `page`, `pageSize` (déf. 50). Réponse : `{ entries: PublicAuditLogEntry[], total, page, pageSize }`. |
+
+`PublicAuditLogEntry` : `{ id, action, actorUserId, actorUsername, targetUserId, targetUsername, metadata, createdAt }`. Catalogue fermé d'actions (`AuditAction`) : changements de rôle/statut de compte, suppression de compte, CRUD de rôles globaux/d'équipe, changement des rôles d'un membre, pose/retrait de dérogation de projet, révocation de session, activation/désactivation 2FA, changement de mot de passe.
 
 ### `/admin/tags` (admin/modérateur — suppression/fusion : admin)
 
@@ -337,6 +395,17 @@ Réversible : rien n'est jamais détruit.
 | DELETE | `/admin/teams/:id/members/:userId` | staff ou gérant | Retire. |
 | POST | `/admin/teams/:id/transfer-ownership` | staff ou owner actuel | Body : `{ newOwnerUserId }`. Seul moyen d'attribuer OWNER. |
 
+#### Rôles d'équipe (`/admin/teams/:id/roles`, `/admin/teams/:id/members/:userId/roles`)
+
+| Méthode | Route | Accès | Description |
+| --- | --- | --- | --- |
+| GET | `/admin/teams/:id/roles` | Connecté | `{ roles: PublicTeamRole[] }` — catalogue de rôles de l'équipe. |
+| POST | `/admin/teams/:id/roles` | `TEAM_MANAGE_ROLES` (staff ou membre autorisé) | Crée un rôle d'équipe personnalisé. Body : `{ name, color?, permissions: TeamFlag[] }`. |
+| PUT | `/admin/teams/:id/roles/:roleId` | `TEAM_MANAGE_ROLES` | Mise à jour. |
+| DELETE | `/admin/teams/:id/roles/:roleId` | `TEAM_MANAGE_ROLES` | Refusé pour un rôle intégré (Owner/Manager/Member). |
+| GET | `/admin/teams/:id/members/:userId/roles` | Connecté | `{ teamRoleIds: number[] }` — rôles d'équipe portés par ce membre. |
+| PUT | `/admin/teams/:id/members/:userId/roles` | `TEAM_MANAGE_ROLES` | Body : `{ teamRoleIds: number[] }`. Remplace intégralement le jeu de rôles du membre. |
+
 </Accordion>
 
 <Accordion title="/admin/projects — Gestion des webcomics" icon="book-open">
@@ -356,6 +425,18 @@ Nécessite d'être connecté ; gestion précise autorisée à `admin`/`modérate
 | POST | `.../chapters/bulk/status` | `canManageProject` | Body : `{ ids, status }`. |
 | POST | `.../chapters/bulk/volume` | `canManageProject` | Body : `{ ids, volumeNumber }`. |
 | POST | `.../chapters/bulk/delete` | admin uniquement | Body : `{ ids }`. |
+
+#### Dérogations de permissions (`/admin/projects/:slug/overrides`)
+
+Réservé à `MANAGE_ROLES` — volontairement **non délégable** aux équipes, même à leur propriétaire (voir [Rôles et permissions](/guide-equipe/roles-et-permissions#dérogations-de-permissions-par-projet)).
+
+| Méthode | Route | Description |
+| --- | --- | --- |
+| GET | `/admin/projects/:slug/overrides` | `{ overrides: PublicProjectMemberOverride[] }`. |
+| PUT | `/admin/projects/:slug/overrides/:userId` | Body : `{ allow: TeamFlag[], deny: TeamFlag[] }`. Pose ou remplace la dérogation. |
+| DELETE | `/admin/projects/:slug/overrides/:userId` | Retire la dérogation. |
+
+`PublicProjectMemberOverride` : `{ id, projectId, userId, allow, deny }`. `deny` l'emporte sur `allow` en cas de chevauchement ; seule la permission `ADMINISTRATOR` passe outre.
 
 **Forme de création/mise à jour d'un projet** :
 

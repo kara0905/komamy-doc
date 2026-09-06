@@ -39,6 +39,23 @@ Règles qui en découlent :
 
 Côté client, voir [Architecture client](/developpeurs/architecture-client) (routage, TanStack Query, pattern de hooks, état partagé).
 
+## Système de permissions granulaires
+
+Le système de rôles à bitfield (voir [Rôles et permissions](/guide-equipe/roles-et-permissions) et la section « Rôles et permissions granulaires » de [Base de données](/developpeurs/base-de-donnees#tables-par-domaine)) remplace progressivement `requireRole`/`users.role` route par route.
+
+- **Nouvelle route protégée par rôle** : utilisez `requirePermission("FLAG_NAME", ...)` (`server/src/middleware/auth.ts`), jamais `requireRole` — même sémantique OR (au moins un des flags donnés), plus le bypass `ADMINISTRATOR` automatique.
+- **Nouveau flag** : ajoutez-le à `GLOBAL_FLAGS`/`TEAM_FLAGS` dans `shared/permissions.ts` (bit suivant non utilisé, jamais réutiliser un bit libéré), avec son libellé français dans `*_LABELS`, puis décidez s'il doit être inclus dans les bits des rôles intégrés (`BUILTIN_GLOBAL_ROLE_BITS`/`BUILTIN_TEAM_ROLE_BITS`) — un rôle intégré existant en base ne se met pas à jour tout seul, voir le point d'attention ci-dessous.
+- **Repository vs service** : `db/repositories/permissions.repository.ts` ne fait que les requêtes (résolution de bits, CRUD de rôles) ; `db/services/permissions.services.ts` porte la logique de résolution (`hasPermission`/`hasTeamPermission`/`hasProjectPermission`) et les règles métier (rôle intégré non renommable, etc.).
+
+### Points d'attention du système de permissions
+
+<Warning>
+  **Bootstrap du compte admin** : `server/src/seed.ts` crée le compte administrateur par défaut via `usersRepo.createUser` directement (pas `usersService.registerUser`), donc **sans** l'assigner au rôle global `Admin` dans `user_roles`. Sur une instance fraîchement installée, ce compte a bien `users.role = 'ADMIN'` (les routes encore sur `requireRole` fonctionnent), mais échoue avec `403` sur toute route déjà migrée vers `requirePermission` (ex. `/admin/authors`, `/admin/roles`) tant que personne ne lui a explicitement assigné le rôle `Admin` — la migration de backfill (`drizzle/20260906083515_crazy_the_hand/migration.sql`) ne peut pas le couvrir puisqu'elle s'exécute *avant* que ce compte n'existe. À vérifier/corriger avant de considérer la migration `requireRole` → `requirePermission` complète.
+</Warning>
+
+- **`team_members.role`/`users.role`** restent lus par les routes non encore migrées et par certains affichages historiques — ne les supprimez pas tant que la migration n'est pas terminée sur toutes les routes concernées.
+- **Rôle intégré modifié** : changer les bits d'un rôle intégré (ex. retirer `MANAGE_TAGS` du rôle Modérateur) a un effet immédiat sur tous les comptes qui le portent — pas de re-confirmation demandée côté UI, à garder en tête en écrivant un test ou une migration de données.
+
 ## Documenter une route avec OpenAPI
 
 La spec OpenAPI (`GET /api/openapi.json`) et son UI interactive (`GET /api/docs`) sont générées à la volée par [`hono-openapi`](https://github.com/rhinobase/hono-openapi) à partir des routes annotées avec `describeRoute()` — pas un fichier YAML séparé à maintenir à la main. **Toutes les routes sont documentées** (158 opérations) — toute nouvelle route doit recevoir le même traitement dès sa création, pour ne pas laisser la couverture régresser.
