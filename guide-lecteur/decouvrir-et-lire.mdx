@@ -1,0 +1,64 @@
+---
+title: "Découvrir et lire"
+description: "Catalogue, recherche, lecteur de chapitre, préférences et téléchargement"
+---
+
+## Explorer le catalogue
+
+La page **Explorer** (`/explore`) liste les projets webcomics avec filtres : tag, auteur, statut d'avancement de la série (en cours, terminé, en pause, licencié, annulé), recherche texte, et tri (récent, populaire, alphabétique, note). La page d'accueil (`/`) est composée de **widgets** configurables par l'administration (derniers chapitres, plus aimés, commentaires récents, catalogue, annonces, mise en avant d'un tag/auteur/équipe, statistiques du site, liens sociaux, bannière personnalisée) — sa disposition peut varier d'une instance à l'autre.
+
+## Recherche globale
+
+La barre de recherche interroge en une seule requête projets, auteurs, équipes, utilisateurs et tags. Une autocomplétion propose des suggestions dès 2 caractères tapés (projets/auteurs/équipes/tags — les utilisateurs sont volontairement exclus de l'autocomplétion, mais apparaissent dans les résultats de recherche complète).
+
+## Lire un chapitre
+
+Le lecteur de chapitre s'ouvre en plein écran, sans barre latérale. Trois **modes de lecture** sont disponibles :
+
+<Tabs>
+  <Tab title="Vertical (continu)">
+    Toutes les pages s'enchaînent en défilement continu — le mode le plus proche d'un webtoon. L'espacement entre pages (aucun, normal, large) est réglable et n'a d'effet que dans ce mode.
+  </Tab>
+  <Tab title="Page par page">
+    Une page à la fois, navigation au clic ou au clavier.
+  </Tab>
+  <Tab title="Double page">
+    Deux pages affichées côte à côte — pratique pour un rendu proche d'un livre physique.
+  </Tab>
+</Tabs>
+
+Raccourcis clavier disponibles depuis le lecteur (aide accessible via l'icône dédiée) : navigation entre pages/chapitres, réglages rapides. La progression de lecture (page atteinte, pourcentage) est enregistrée automatiquement en continu si vous êtes connecté, et reprise à la prochaine ouverture du chapitre.
+
+## Préférences de lecture
+
+Depuis les réglages du lecteur (icône dédiée dans l'en-tête du lecteur), ou depuis `/settings` :
+
+| Réglage | Valeurs |
+| --- | --- |
+| Mode de lecture | Vertical, Page par page, Double page |
+| Largeur du lecteur | 320 à 4000 px |
+| Espacement des pages (mode Vertical) | Aucun (défaut), Normal, Large |
+| Thème | Clair, sombre, sépia, minuit |
+
+<Note>
+  Ces réglages sont **synchronisés sur votre compte**, contrairement au sens de lecture (gauche→droite / droite→gauche) et aux ajustements de luminosité/niveaux de gris, qui restent des réglages purement locaux à l'appareil (non synchronisés).
+</Note>
+
+## Suivre sa progression
+
+- **Continuer la lecture** (page d'accueil et profil) : reprend le dernier chapitre en cours par série, ou propose le chapitre suivant si vous êtes à jour.
+- **Historique** (`/profile`) : liste paginée des chapitres terminés.
+- **Marquer comme lu** : depuis la fiche projet, basculez un chapitre (ou une sélection de plusieurs chapitres à la fois) en lu/non lu sans avoir à l'ouvrir.
+
+## Favoris et note
+
+- **Favoris** : bouton cœur sur la fiche projet — retrouvez vos favoris depuis votre profil.
+- **Note globale** : 1 à 5 étoiles sur la série entière, modifiable ou retirable à tout moment. Distincte des **likes par chapitre** (bouton like sur un chapitre précis), qui alimentent le classement des chapitres les plus aimés.
+
+## Télécharger un chapitre ou une série (CBZ)
+
+Quand l'équipe/le staff l'a activé sur un projet, un bouton **Télécharger** propose une archive **CBZ** (format standard pour lecteurs de bande dessinée hors-ligne type CDisplayEx, Komga...) — soit pour un chapitre, soit pour la série entière (tous les chapitres publiés, dans l'ordre).
+
+<Warning>
+  Le téléchargement est **désactivé par défaut** sur chaque projet — c'est à l'équipe qui publie de l'activer. Le téléchargement de série entière est par ailleurs plafonné (au-delà, téléchargez les chapitres individuellement).
+</Warning>

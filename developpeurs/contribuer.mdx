@@ -1,0 +1,147 @@
+---
+title: "Contribuer"
+description: "Workflow de développement, tests, CI et style de code"
+---
+
+Pour l'installation et le lancement du projet en local, voir [Déploiement](/developpeurs/deploiement#déploiement-en-développement) — pas dupliqué ici.
+
+## Architecture en couches (backend)
+
+Toute donnée traverse quatre couches, dans cet ordre, chacune ignorant celles au-dessus d'elle :
+
+```
+db/schema/*.ts        Tables Drizzle — la source de vérité du schéma PostgreSQL
+      ↓
+db/repositories/*.ts   Une fonction = une requête Drizzle. Pas de logique métier.
+      ↓
+db/services/*.ts        Logique métier + traduction vers les formes `Public*`
+      ↓                  exposées par l'API (voir shared/*.ts)
+server/src/routes/*.ts   Validation (Zod), permissions (requireAuth/requireRole/
+                          canManageProject...), appel du service, réponse JSON
+```
+
+Règles qui en découlent :
+
+<AccordionGroup>
+  <Accordion title="db/repositories/ ne dépend jamais de server/">
+    Un repository ou un service doit rester utilisable depuis n'importe quelle route, pas seulement celle pour laquelle il a été écrit. Si une logique de permission doit être réutilisée à la fois dans une route et dans un service (ex. `canManageProject`), il est arrivé qu'on la duplique volontairement plutôt que de faire dépendre `db/services/` de `server/routes/` — dans ce cas, un commentaire au-dessus des deux implémentations rappelle qu'elles doivent rester synchronisées.
+  </Accordion>
+  <Accordion title="Le contrat public (Public*) est stable">
+    Les routes ne renvoient jamais directement une ligne Drizzle. `toPublicX()` (dans le service) traduit toujours vers la forme exposée dans `shared/*.ts`, même quand le schéma sous-jacent change. Voir [Base de données](/developpeurs/base-de-donnees) pour le détail des traductions enum DB ↔ API.
+  </Accordion>
+  <Accordion title="Compteurs sensibles aux refetchs → route POST séparée">
+    Les incréments de compteur sensibles aux refetchs (vues d'un projet, d'un chapitre) sont exposés en route `POST` séparée, appelée une fois côté client via un `$effect` qui suit un id devenant défini — jamais inline dans la route `GET`, pour ne pas compter les revalidations de cache TanStack Query.
+  </Accordion>
+  <Accordion title="Erreur de validation Zod → message explicite">
+    Après un `schema.safeParse(...)` qui échoue, ne jamais construire le message d'erreur à la main (ex. `parsed.error.issues[0]?.message`, qui ne garde que le premier problème) — utiliser `formatZodError(parsed.error)` (`db/lib/validation.ts`), qui liste tous les problèmes préfixés par leur champ.
+  </Accordion>
+</AccordionGroup>
+
+Côté client, voir [Architecture client](/developpeurs/architecture-client) (routage, TanStack Query, pattern de hooks, état partagé).
+
+## Documenter une route avec OpenAPI
+
+La spec OpenAPI (`GET /api/openapi.json`) et son UI interactive (`GET /api/docs`) sont générées à la volée par [`hono-openapi`](https://github.com/rhinobase/hono-openapi) à partir des routes annotées avec `describeRoute()` — pas un fichier YAML séparé à maintenir à la main. **Toutes les routes sont documentées** (158 opérations) — toute nouvelle route doit recevoir le même traitement dès sa création, pour ne pas laisser la couverture régresser.
+
+Briques réutilisables dans `server/src/lib/openapi.ts` : `jsonContent()` (réponses, via `resolver()`), `requestJsonContent()` (corps de requête), `withCommonErrors()` (ajoute 400/401/403/404 standard), `errorResponseSchema`, et des miroirs Zod des formes `Public*` déjà utilisées par plusieurs routes.
+
+Pour ajouter la doc à une route existante :
+
+```ts
+teamRoutes.get(
+  '/:slug',
+  describeRoute({
+    tags: ['Équipes'],
+    summary: "Détails d'une équipe",
+    parameters: [slugParam],
+    responses: withCommonErrors(
+      { 200: { description: '...', content: jsonContent(z.object({ team: publicTeamSchema })) } },
+      { notFound: true },
+    ),
+  }),
+  async (c) => {
+    /* handler inchangé */
+  },
+);
+```
+
+<Note>
+  `describeRoute()` s'insère comme un middleware juste avant le handler — il ne change aucun comportement runtime, seulement la doc générée. Réutilisez un schéma Zod **déjà utilisé pour la vraie validation** plutôt que d'en écrire un nouveau, quand la route en a un.
+</Note>
+
+L'UI (`GET /api/docs`) charge Swagger UI depuis `client/public/vendor/swagger-ui/` — vendorisé (copié depuis `swagger-ui-dist`), pas une dépendance npm, pour rester servi en same-origin sous la CSP du site (`script-src 'self'`) sans dépendre d'un CDN.
+
+## Modifier le schéma de base de données
+
+<Steps>
+  <Step title="Éditer le schéma">
+    `db/schema/<domaine>.ts` (colonne, table, enum dans `db/types/enums.ts`).
+  </Step>
+  <Step title="Générer la migration">
+    `bun run db:generate`. Relisez le SQL généré dans `drizzle/<timestamp>_<nom>/migration.sql` **avant** de l'appliquer — en particulier les `ALTER TABLE` avec perte de données potentielle.
+  </Step>
+  <Step title="Appliquer sur la base de test">
+    `bun run test:prepare` (nécessite PostgreSQL démarré, `DATABASE_URL` dans `.env.test`).
+  </Step>
+  <Step title="Mettre à jour le contrat public">
+    `shared/<domaine>.ts` si le contrat public change, et le service correspondant (`db/services/<domaine>.services.ts`) pour exposer le nouveau champ dans `toPublicX()`.
+  </Step>
+  <Step title="Documenter">
+    [Base de données](/developpeurs/base-de-donnees) (table/colonne) et la [Référence API](/developpeurs/api-reference) (route/forme de réponse) si le changement est visible côté API.
+  </Step>
+</Steps>
+
+<Warning>
+  Jamais de migration appliquée directement en écrivant du SQL à la main : toujours passer par `db:generate` pour garder le fichier de snapshot Drizzle synchronisé avec l'historique.
+</Warning>
+
+## Tests
+
+Deux suites, toutes deux via Bun :
+
+- **Unitaires** (`tests/unit/`) : fonctions pures, sans base de données — `bun run test:unit`.
+- **Intégration** (`tests/integration/`) : montent une vraie instance de l'app Hono (`app.request(...)`) contre une base PostgreSQL de test réelle. `tests/setup/helpers.ts` expose `resetDb()` (TRUNCATE de toutes les tables, appelé en `beforeEach`) et des fabriques (`registerUser`, `createProject`, `createTeam`, `createChapter`...).
+
+<Warning>
+  `resetDb()` refuse de tourner si `DATABASE_URL` ne contient pas `test` dans le nom de la base — protection contre un TRUNCATE accidentel d'une base de dev/prod.
+</Warning>
+
+```bash
+bun run test              # prépare la base de test puis lance toute la suite
+bun run test:unit         # uniquement les tests unitaires (rapide, aucune base requise)
+bun run test:integration  # uniquement les tests d'intégration
+bun run test:typecheck    # typecheck des tests (serveur + shared + db + tests/)
+```
+
+Convention pour un nouveau test d'intégration : réutiliser les fabriques de `tests/setup/helpers.ts` plutôt que d'appeler l'API pas à pas à chaque fois.
+
+### Intégration continue
+
+`.github/workflows/ci.yml` exécute à chaque push/PR sur `main` :
+
+- **`checks`** : `format:check`, `lint`, `check:client` (svelte-check), `test:typecheck`, `test:client` (composants Svelte, Vitest), puis `build`.
+- **`tests`** : `bun run test` (unitaires + intégration) contre un service PostgreSQL 16 éphémère.
+
+## Avant de pousser
+
+Ce que la CI vérifie sur chaque push/PR, dans l'ordre où ça vaut la peine de les lancer en local (le plus rapide à échouer en premier) :
+
+```bash
+bun run format:check      # Prettier — bun run format pour corriger
+bun run lint               # ESLint
+bun run check:client       # svelte-check (typecheck du client Svelte)
+bun run test:typecheck     # Typecheck des fichiers de test
+bun run test:client        # Tests de composants (Vitest)
+bun run build               # Build client + serveur
+bun run test                 # test:prepare + suite unitaire + intégration (Postgres requis)
+```
+
+<Tip>
+  `bunx tsc -p tsconfig.server.json --noEmit` seul (sans build complet) est le moyen le plus rapide de valider uniquement le typecheck serveur pendant qu'on itère.
+</Tip>
+
+## Style de code
+
+- Pas de commentaire qui répète ce que le code dit déjà — un commentaire n'a de valeur que s'il explique un **pourquoi** non évident (contrainte cachée, contournement d'un bug précis, comportement qui surprendrait à la lecture).
+- Pas d'abstraction ajoutée « au cas où » — trois lignes similaires valent mieux qu'une fausse généralisation prématurée.
+- `db/repositories/`, `db/services/` et `db/validators/` suivent une convention de nommage stricte : `<domaine>.repository.ts` / `<domaine>.services.ts` / `<domaine>.schemas.ts`, un fichier par domaine fonctionnel (pas par table) — voir [Base de données](/developpeurs/base-de-donnees) pour la correspondance domaine ↔ tables.

@@ -11,56 +11,72 @@
   "navigation": {
     "pages": [
       {
-        "group": "Getting Started",
+        "group": "Démarrage",
+        "icon": "rocket",
+        "pages": ["index", "quickstart"]
+      },
+      {
+        "group": "Guide lecteur",
+        "icon": "book-open",
         "pages": [
-          "index",
-          "quickstart"
+          "guide-lecteur/compte-et-profil",
+          "guide-lecteur/decouvrir-et-lire",
+          "guide-lecteur/favoris-collections-et-notes",
+          "guide-lecteur/commentaires-et-communaute",
+          "guide-lecteur/messagerie-et-notifications",
+          "guide-lecteur/suivre-et-succes",
+          "guide-lecteur/signalements",
+          "guide-lecteur/vos-donnees"
         ]
       },
       {
-        "group": "Getting Started",
+        "group": "Guide équipe",
+        "icon": "users",
         "pages": [
-          "index",
-          "quickstart"
+          "guide-equipe/roles-et-permissions",
+          "guide-equipe/publier-un-projet",
+          "guide-equipe/publier-un-chapitre",
+          "guide-equipe/publier-un-article",
+          "guide-equipe/gerer-une-equipe",
+          "guide-equipe/importer-depuis-mangadex",
+          "guide-equipe/outils-images",
+          "guide-equipe/administration"
         ]
       },
       {
         "group": "Développeurs",
-        "pages": []
-      },
-      "comment-fonctionne-l-api-ce-document-explique-les-principes-de-l-api-comments-authentifier-quelles-conventions-suivre-pour-la-liste-exhaustive-des-routes-methode-acces-corps-de-requete-reponse-voi"
+        "icon": "code",
+        "pages": [
+          "developpeurs/architecture",
+          "developpeurs/architecture-client",
+          "developpeurs/base-de-donnees",
+          "developpeurs/api-overview",
+          "developpeurs/api-reference",
+          "developpeurs/deploiement",
+          "developpeurs/contribuer"
+        ]
+      }
     ]
   },
   "navbar": {
     "links": [
       {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "label": "Dépôt GitHub",
+        "href": "https://github.com/kara0905/komamy"
       }
     ],
     "primary": {
       "type": "button",
-      "label": "Dashboard",
-      "href": "https://app.mintlify.com"
+      "label": "API interactive",
+      "href": "/developpeurs/api-overview"
     }
   },
   "contextual": {
-    "options": [
-      "copy",
-      "view",
-      "chatgpt",
-      "claude",
-      "perplexity",
-      "mcp",
-      "cursor",
-      "vscode"
-    ]
+    "options": ["copy", "view", "chatgpt", "claude", "perplexity", "mcp", "cursor", "vscode"]
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "github": "https://github.com/kara0905/komamy"
     }
   },
   "background": {

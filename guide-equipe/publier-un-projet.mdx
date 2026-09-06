@@ -1,0 +1,71 @@
+---
+title: "Publier un projet"
+description: "Créer la fiche d'une série webcomic"
+---
+
+Un « projet » est la fiche d'une série (titre, description, auteurs, équipe, visuels). Une fois créé, on y ajoute des chapitres — voir [Publier un chapitre](/guide-equipe/publier-un-chapitre).
+
+<Info>
+  **Qui peut faire ça ?** `admin`, `modérateur`, ou tout compte `lecteur` membre de l'équipe créditée sur le projet — voir [Rôles et permissions](/guide-equipe/roles-et-permissions).
+</Info>
+
+<Steps>
+  <Step title="Ouvrir l'onglet Webcomics">
+    Depuis l'administration (`/admin`), ouvrez l'onglet **Webcomics**, puis cliquez sur **Ajouter**.
+
+    <Tip>
+      Contrairement à l'onglet Articles, l'onglet Webcomics est visible par **tous les rôles connectés** — la liste affichée est simplement filtrée aux projets que vous avez le droit de gérer.
+    </Tip>
+  </Step>
+  <Step title="Remplir la fiche du projet">
+    <Frame>
+      <img src="/images/guides/guide-projet-01-vide.png" alt="Formulaire de création de projet vide" />
+    </Frame>
+
+    Trois blocs à gauche, un bloc à droite :
+
+    - **Informations générales** — titre, slug (URL), description.
+    - **Crédits** — un ou plusieurs **auteurs** (scénario, dessin...) et une ou plusieurs **équipes** (traduction, édition...), chacun avec un rôle dédié. C'est ce qui détermine qui a le droit d'éditer ce projet ensuite (voir la [règle d'appartenance à une équipe](/guide-equipe/roles-et-permissions#la-règle-qui-surprend--membre-déquipe--droit-dédition)).
+    - **Métadonnées & liens** — tags (même catalogue que les articles) et liens externes (Discord, Patreon...).
+    - **Visuels & statut** (à droite) — statut de publication (Brouillon/Publié), avancement de la série (En cours, Terminé, En pause, Licencié, Annulé), image de couverture et bannière (upload direct de fichier).
+
+    Voici un exemple entièrement rempli :
+
+    <Frame>
+      <img src="/images/guides/guide-projet-02-rempli.png" alt="Formulaire de projet entièrement rempli, avec crédits, tags, lien et visuels" />
+    </Frame>
+
+    Points d'attention :
+
+    - **Statut** doit être sur **Publié** pour que le projet soit visible du public — un projet en Brouillon reste privé (visible seulement par le staff et les membres de l'équipe créditée).
+    - Les images de **couverture** (ratio 3:4) et **bannière** (ratio 16:6) se sélectionnent en cliquant directement sur la zone en pointillés.
+    - Ajouter un tag ou un lien se fait en tapant puis en appuyant sur **Entrée** (ou en cliquant sur **Ajouter** pour un lien).
+  </Step>
+  <Step title="Créer le projet">
+    Cliquez sur **Créer le projet**. Le formulaire reste sur place mais deux nouveaux onglets apparaissent en haut : **Chapitres** et **Nouveau chapitre** — le projet existe désormais, prêt à recevoir du contenu.
+
+    <Frame>
+      <img src="/images/guides/guide-projet-03-cree.png" alt="Projet créé — les onglets Chapitres et Nouveau chapitre apparaissent" />
+    </Frame>
+
+    L'étape suivante est d'y ajouter au moins un chapitre : voir [Publier un chapitre](/guide-equipe/publier-un-chapitre).
+  </Step>
+</Steps>
+
+## Aperçu côté public
+
+Une fois publié et au moins un chapitre ajouté, voici ce que voient les visiteurs sur la page du projet :
+
+<Frame>
+  <img src="/images/guides/guide-projet-04-page-publique.png" alt="Page publique du projet, avec informations, tags et liste des chapitres" />
+</Frame>
+
+## Éditer un projet existant
+
+Depuis l'onglet **Webcomics**, cliquez sur **Éditer** sur la carte du projet concerné (`/admin/webcomics/:slug`) — même formulaire, pré-rempli.
+
+## Notes
+
+- Seul `admin` peut **supprimer** un projet — la suppression est en cascade (chapitres, commentaires, favoris disparaissent avec lui) et efface aussi les fichiers uploadés du disque.
+- Les champs historiques (auteur/équipe affichés sur les cartes compactes) reflètent toujours le **premier** crédit ajouté ; les listes complètes de crédits portent tous les auteurs/équipes.
+- Un projet peut aussi être créé automatiquement par un [import MangaDex](/guide-equipe/importer-depuis-mangadex) — dans ce cas il naît en Brouillon et n'est jamais publié automatiquement.

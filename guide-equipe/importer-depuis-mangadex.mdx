@@ -1,0 +1,43 @@
+---
+title: "Importer depuis MangaDex"
+description: "Récupérer des chapitres qu'une équipe publie déjà sur MangaDex"
+---
+
+Komamy peut importer des chapitres qu'une équipe publie déjà sur [MangaDex](https://mangadex.org) (via l'API officielle, en lecture seule), pour retrouver le même contenu sur votre instance sans tout re-uploader manuellement.
+
+<Info>
+  **Qui peut faire ça ?** `admin`/`modérateur` uniquement — contrairement au reste des routes projets/équipes, **pas ouvert aux gérants d'équipe** : déclencher un import reste une action de modération. Voir [Rôles et permissions](/guide-equipe/roles-et-permissions).
+</Info>
+
+## Garde-fou : un groupe MangaDex par équipe
+
+Un import ne peut ramener que les chapitres réellement crédités, sur MangaDex, au **groupe de scanlation** enregistré sur l'équipe choisie — vérifié côté serveur à chaque appel, jamais laissé au client. Avant de pouvoir importer, un `admin`/`modérateur` doit donc renseigner l'identifiant du groupe MangaDex sur la fiche de l'équipe (`/admin/teams`, champ dédié — pas accessible même à un gérant d'équipe).
+
+<Warning>
+  Ce garde-fou empêche qu'une équipe importe le travail d'une autre équipe sur la même série.
+</Warning>
+
+## Réaliser un import
+
+<Steps>
+  <Step title="Rechercher une série">
+    Depuis l'outil d'import MangaDex (accessible en administration), recherchez la série par titre (jusqu'à 10 résultats).
+  </Step>
+  <Step title="Choisir l'équipe et prévisualiser">
+    Sélectionnez l'équipe cible (celle dont le groupe MangaDex est configuré). L'aperçu liste les chapitres crédités à ce groupe sur MangaDex, chacun marqué s'il a déjà été importé.
+  </Step>
+  <Step title="Sélectionner et importer">
+    Cochez les chapitres à importer et lancez l'import (limité à 5 imports par minute). La sélection est **revérifiée intégralement** côté serveur contre MangaDex avant d'importer quoi que ce soit.
+  </Step>
+</Steps>
+
+## Ce qui se passe pendant l'import
+
+- Le **projet cible** est créé automatiquement s'il n'existe pas déjà pour cette série, en visibilité **privée** — jamais publié automatiquement. S'il existe déjà (import précédent), il n'est **jamais retouché** (titre, description, couverture, crédits) : l'import se limite à ajouter les nouveaux chapitres.
+- Chaque chapitre importé est créé en statut **Brouillon** (jamais publié automatiquement), avec un identifiant de dédoublonnage : réimporter un chapitre déjà présent le place simplement dans la liste des chapitres ignorés, sans le recréer.
+- Les pages sont retéléchargées puis passées par le même pipeline d'images que les chapitres uploadés manuellement (redimensionnement, conversion WebP).
+- Un chapitre en échec (page corrompue, erreur réseau ponctuelle) est ignoré sans faire échouer l'import du reste de la sélection.
+
+<Tip>
+  Après un import, le projet et ses chapitres restent en Brouillon — c'est à vous de compléter la fiche (crédits, description, visuels) puis de publier, comme pour tout projet créé manuellement. Voir [Publier un projet](/guide-equipe/publier-un-projet) et [Publier un chapitre](/guide-equipe/publier-un-chapitre).
+</Tip>

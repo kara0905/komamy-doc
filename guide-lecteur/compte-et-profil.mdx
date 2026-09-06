@@ -1,0 +1,50 @@
+---
+title: "Compte et profil"
+description: "Inscription, connexion, passkeys, profil public et préférences"
+---
+
+## Créer un compte
+
+Depuis la page **Inscription** (`/register`), renseignez un pseudo (3-32 caractères, lettres/chiffres/`_`/`-`) et un mot de passe (6 caractères minimum). Le compte créé a automatiquement le rôle **lecteur** — c'est le rôle par défaut, celui de tout nouveau compte.
+
+<Note>
+  Il n'y a pas de vérification par e-mail : l'inscription est immédiate. Komamy ne demande d'ailleurs pas d'adresse e-mail à l'inscription.
+</Note>
+
+## Se connecter
+
+Connexion classique par pseudo/mot de passe (`/login`), ou par **passkey** (voir ci-dessous). Une fois connecté, un cookie de session (httpOnly, signé, valable 7 jours) est posé automatiquement — il n'y a rien à gérer manuellement, y compris entre deux onglets ou après un rechargement de page. Passé les 7 jours, il suffit de se reconnecter (pas de renouvellement automatique de session).
+
+## Connexion sans mot de passe (passkeys)
+
+Komamy prend en charge les **passkeys** (WebAuthn) — clé de sécurité matérielle ou passkey synchronisée (iCloud Keychain, Google Password Manager...) — **toujours en complément** du mot de passe, jamais en remplacement : un compte garde toujours son mot de passe comme moyen de connexion de secours.
+
+<Steps>
+  <Step title="Enregistrer une passkey">
+    Depuis `/settings`, section **Passkeys**, cliquez sur **Ajouter une passkey**. Le navigateur vous guide (biométrie, code PIN, clé physique...). Donnez-lui un nom pour la retrouver plus tard dans la liste.
+  </Step>
+  <Step title="Se connecter avec">
+    Sur la page de connexion, choisissez l'option passkey — c'est un flux **« discoverable »** : le navigateur propose directement les passkeys enregistrées pour le site, pas besoin de saisir votre pseudo au préalable.
+  </Step>
+  <Step title="Gérer vos passkeys">
+    Renommez ou supprimez une passkey à tout moment depuis `/settings`. Supprimer votre dernière passkey ne bloque rien : votre mot de passe reste toujours valide.
+  </Step>
+</Steps>
+
+## Profil public
+
+Chaque compte a une page profil publique (`/users/:id`) affichant : bio, commentaires postés, favoris, succès débloqués, équipes dont le compte est membre, et collections (les collections privées ne sont visibles que par leur propriétaire).
+
+Depuis `/settings`, vous pouvez :
+
+- Modifier votre **bio** (2000 caractères max).
+- Uploader un **avatar** et une **bannière de profil**.
+- Changer votre **mot de passe** (mot de passe actuel requis).
+
+## Préférences visuelles
+
+Le **thème** visuel (`light`/`dark`/`sepia`/`midnight`) est réglable depuis le sélecteur de thème de la barre latérale et synchronisé sur votre compte — il vous suit d'un appareil à l'autre, contrairement à un simple réglage local au navigateur.
+
+<Tip>
+  Les préférences de **lecture** (mode de lecture, largeur du lecteur, espacement des pages) sont couvertes dans [Découvrir et lire](/guide-lecteur/decouvrir-et-lire#préférences-de-lecture) — elles sont, elles aussi, synchronisées sur votre compte.
+</Tip>

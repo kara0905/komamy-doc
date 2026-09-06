@@ -1,0 +1,79 @@
+---
+title: "Tour de l'administration"
+description: "Utilisateurs, auteurs, tags, tickets et paramètres du site"
+---
+
+L'administration (`/admin`) est une page à onglets. Les onglets visibles dépendent du rôle du compte connecté — voir [Rôles et permissions](/guide-equipe/roles-et-permissions) pour le détail exact par action.
+
+<Frame>
+  <img src="/images/guides/overview-02-admin-users.png" alt="Onglet Utilisateurs de l'administration" />
+</Frame>
+
+| Onglet | Accès | Contenu |
+| --- | --- | --- |
+| **Utilisateurs** | `admin` uniquement | Liste des comptes, changement de rôle, réinitialisation de mot de passe, suppression (impossible sur son propre compte). |
+| **Articles** | `admin`/`modérateur` | Voir [Publier un article](/guide-equipe/publier-un-article). |
+| **Webcomics** | Tout compte connecté (filtré par permission) | Voir [Publier un projet](/guide-equipe/publier-un-projet) et [Publier un chapitre](/guide-equipe/publier-un-chapitre). |
+| **Auteurs** | `admin`/`modérateur` | Fiches d'auteurs à créditer sur les projets (indépendantes d'un compte utilisateur). |
+| **Équipes** | Tout compte connecté | Voir ci-dessous et [Gérer une équipe](/guide-equipe/gerer-une-equipe). |
+| **Tags** | `admin`/`modérateur` | Catalogue partagé entre articles et projets. |
+| **Tickets** | `admin`/`modérateur` | Signalements des lecteurs. |
+| **Paramètres** | `admin` uniquement | Projets mis en avant sur l'accueil, disposition de la page d'accueil, lien Discord. |
+
+## Utilisateurs
+
+<Frame>
+  <img src="/images/guides/overview-02-admin-users.png" alt="Liste des utilisateurs" />
+</Frame>
+
+Réservé à `admin`. Recherche par pseudo, changement de rôle (`admin`/`modérateur`/`lecteur`), réinitialisation de mot de passe, changement de statut (actif/suspendu), suppression de compte — impossible sur son propre compte, et supprime aussi les fichiers uploadés (avatar, bannière) de l'utilisateur.
+
+## Webcomics (aperçu)
+
+<Frame>
+  <img src="/images/guides/overview-03-admin-webcomics.png" alt="Onglet Webcomics, avec le bouton Ajouter" />
+</Frame>
+
+Voir les guides dédiés : [Publier un projet](/guide-equipe/publier-un-projet) et [Publier un chapitre](/guide-equipe/publier-un-chapitre).
+
+## Équipes
+
+Contrairement aux Articles ou aux Auteurs, la création d'équipe se fait **directement dans l'onglet**, sans page dédiée ni bouton « Ajouter » séparé — le formulaire de création est toujours visible à gauche, la liste des équipes existantes à droite.
+
+<Frame>
+  <img src="/images/guides/overview-04-admin-teams.png" alt="Onglet Équipes : formulaire de création à gauche, liste à droite" />
+</Frame>
+
+Une fois une équipe créée, sa fiche permet de gérer ses membres — voir [Gérer une équipe](/guide-equipe/gerer-une-equipe) pour le détail complet (rôles, transfert de propriété, feed, agenda, succès, statistiques).
+
+## Tags
+
+Catalogue centralisé utilisé à la fois par les articles et les projets webcomics (autocomplétion dans les deux éditeurs). Chaque tag a un nom, une description optionnelle, une couleur (affichée en chip colorée partout sur le site), une **catégorie** (genre, trope, démographie, format, avertissement de contenu), et un indicateur « contenu explicite » — c'est ce mécanisme, combiné à la catégorie « avertissement de contenu », qui alimente les avertissements affichés sur une fiche projet/article.
+
+<Frame>
+  <img src="/images/guides/overview-05-admin-tags.png" alt="Onglet Tags" />
+</Frame>
+
+Seul `admin` peut **supprimer** un tag (le détache des projets/articles sans les supprimer) ou **fusionner** deux tags doublons (tous les contenus qui portaient l'ancien tag reçoivent le tag cible, puis l'ancien est supprimé).
+
+## Tickets
+
+Les tickets sont ouverts par les lecteurs pour signaler un problème (bug, erreur sur un chapitre, commentaire inapproprié...). Chaque ticket ouvre automatiquement un canal de discussion dédié avec le déclarant.
+
+<Frame>
+  <img src="/images/guides/overview-06-admin-tickets.png" alt="Onglet Tickets" />
+</Frame>
+
+`admin`/`modérateur` peuvent changer le statut (Ouvert → En cours → En attente → Résolu → Fermé), la priorité, et assigner un agent staff au ticket. Le déclarant est automatiquement notifié à chaque changement de statut. Seul `admin` peut supprimer un ticket.
+
+## Paramètres du site
+
+Réservé à `admin` :
+
+- **Projets mis en avant** sur la page d'accueil.
+- **Disposition de la page d'accueil** (widgets sur une grille : derniers chapitres, plus aimés, commentaires récents, catalogue, annonces, tag/auteur/équipe en vedette, statistiques, liens sociaux, bannière personnalisée) — validée avant écriture pour ne jamais casser la page publique.
+- **Lien Discord** affiché publiquement (widget liens sociaux et pied de page).
+
+## Modération des commentaires et du blog
+
+Au-delà des tickets, `admin`/`modérateur` peuvent modérer directement n'importe quel commentaire (projet, chapitre, article, blog communautaire) : masquer/afficher sans supprimer, supprimer (réversible), consulter l'historique des versions éditées, ou restaurer un contenu supprimé — tout est conçu pour être réversible, rien n'est jamais détruit silencieusement.

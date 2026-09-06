@@ -1,0 +1,77 @@
+---
+title: "Gérer une équipe"
+description: "Rôles internes, membres, fil d'actualité, agenda, succès et statistiques"
+---
+
+Une « team » regroupe les personnes qui traduisent/publient une ou plusieurs séries. Pour la création d'équipe elle-même, voir [Administration](/guide-equipe/administration#équipes) — ce guide couvre tout ce qui est spécifique à la fiche équipe une fois créée.
+
+## Rôles au sein d'une équipe
+
+Trois rôles, **indépendants** du rôle de compte (admin/modérateur/lecteur) :
+
+| Rôle | Peut faire |
+| --- | --- |
+| **Membre** | Créer/éditer les projets et chapitres de l'équipe — exactement comme un gérant. Ajouter/retirer d'autres membres. |
+| **Gérant** | Comme Membre, distingué visuellement par un badge, mais **sans droit supplémentaire** aujourd'hui — la différence est purement cosmétique. |
+| **Propriétaire** | Un seul par équipe. Seul rôle qui peut supprimer l'équipe (avec le staff), et transférer la propriété à un autre membre. |
+
+<Note>
+  Un compte staff (`admin`/`modérateur`) a toujours les mêmes droits qu'un membre sur n'importe quelle équipe, sans avoir besoin d'y être ajouté.
+</Note>
+
+### Ajouter, retirer, changer le rôle d'un membre
+
+Depuis la fiche équipe en administration (`/admin` → onglet **Équipes** → sélectionner l'équipe), le panneau **Membres** permet de :
+
+- **Ajouter** un membre par recherche de pseudo (aucune invitation par e-mail — l'ajout est immédiat, à faire avec l'accord de la personne).
+- **Changer son rôle** entre Membre et Gérant via un menu déroulant sur sa ligne (le Propriétaire n'apparaît pas dans ce menu).
+- **Retirer** un membre.
+
+<Warning>
+  Ces trois actions sont ouvertes à **tout membre** de l'équipe (pas seulement Gérant/Propriétaire) — n'importe qui dans l'équipe peut donc ajouter ou retirer quelqu'un d'autre. C'est un choix délibéré, à garder en tête si une équipe accueille des membres peu expérimentés.
+</Warning>
+
+### Transférer la propriété
+
+Seul le **Propriétaire actuel** (ou un compte staff) voit l'icône couronne sur les lignes des autres membres. Cliquer dessus ouvre une confirmation de transfert — immédiat, et l'ancien propriétaire redevient automatiquement Gérant (jamais simple Membre). C'est le **seul** moyen d'attribuer le rôle Propriétaire à quelqu'un.
+
+## Fil d'actualité (Feed)
+
+Onglet **Feed** de la fiche publique de l'équipe, avec une présentation façon réseau social — deux types de posts, mélangés dans un même fil chronologique :
+
+<Tabs>
+  <Tab title="Annonce">
+    Titre, contenu enrichi (même éditeur par blocs que les chapitres/articles) et image de couverture optionnelle. Usage typique : annoncer une pause, remercier les lecteurs, expliquer un changement de rythme de publication.
+  </Tab>
+  <Tab title="Sondage">
+    Une question (le titre), un contexte optionnel, et 2 à 10 options. Choix unique — revoter remplace le vote précédent plutôt que de s'ajouter.
+  </Tab>
+</Tabs>
+
+**Publier ou supprimer un post est réservé aux membres de l'équipe** (tout rôle) et au staff. **Voter à un sondage et réagir (♥), en revanche, sont ouverts à tout visiteur connecté** — ce sont des gestes de communauté, pas des actes de publication.
+
+## Agenda des sorties
+
+Onglet **Agenda** : calendrier des dates de sortie annoncées, en vue **Liste** ou **Calendrier** (mensuel, navigable). Une entrée porte un titre, une date, une description optionnelle, et peut être **liée à un projet existant** (facultatif) — utile pour annoncer une sortie avant même que le chapitre correspondant soit en ligne.
+
+Ajout/modification/suppression réservés aux membres de l'équipe et au staff.
+
+## Succès d'équipe
+
+Onglet **Succès** : badges débloqués par l'équipe (catégories Contenu, Communauté, Équipe), calculés automatiquement à partir de l'activité (projets/chapitres publiés, favoris reçus, followers, membres, ancienneté) — rien à configurer, visible de tout le monde.
+
+## Statistiques
+
+Onglet **Statistiques** : agrégat des vues, likes, favoris de toutes les séries de l'équipe, nouveaux favoris et chapitres lus sur les 30 derniers jours, et classement des chapitres les plus lus.
+
+<Note>
+  Contrairement aux autres onglets, celui-ci **n'est pas public** — visible uniquement par les membres de l'équipe et le staff (l'onglet est simplement absent pour un visiteur non autorisé).
+</Note>
+
+## Avatar et bannière
+
+Uploadables depuis la fiche équipe en administration, comme pour un compte utilisateur ou une fiche auteur — champs séparés, remplacent l'image précédente (l'ancien fichier est supprimé du disque).
+
+## Suivre une équipe (côté lecteur)
+
+Voir [Suivre et succès](/guide-lecteur/suivre-et-succes) pour la perspective d'un lecteur qui suit votre équipe.
